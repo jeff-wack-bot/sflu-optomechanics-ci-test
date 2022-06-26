@@ -291,3 +291,20 @@ def makegrid():
         if xarr is not None:
             ax.set_xlim(xarr[0], xarr[-1])
     return func
+
+
+@pytest.fixture
+def plotTF():
+    from tf_lib import plotTF
+    return plotTF
+
+
+@pytest.fixture
+def plot_tf():
+    from tf_lib import plot_tf
+    return plot_tf
+
+@pytest.fixture
+def plot_tf_homs():
+    from tf_lib import plot_tf_homs
+    return plot_tf_homs
