@@ -42,18 +42,6 @@ def pytest_addoption(parser):
 
 
 @pytest.fixture
-def directories(fpath):
-    root_dir = fpath.split('test')[0]
-    strain_dir = path.join(root_dir, 'strain')
-    param_dir = path.join(root_dir, 'ifos')
-    return dict(
-        root_dir=root_dir,
-        strain_dir=strain_dir,
-        param_dir=param_dir,
-    )
-
-
-@pytest.fixture
 def plot(request):
     return request.config.getvalue('--plot')
     return request.config.option.plot
