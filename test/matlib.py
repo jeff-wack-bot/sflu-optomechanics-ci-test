@@ -22,9 +22,9 @@ def optickle_model(basename, params=None):
     The basename is the file name that the results are exported to. The optional
     params kwarg is a gwinc Struct containing parameters of the model. If given
     that struct will also be cached. The model will be (re)computed if no hdf5
-    cache exists or if pars is given and different from the cached parameter struct.
+    cache exists or if params is given and different from the cached parameter struct.
     The evaluated optickle model will just be loaded and returned if the cached
-    struct is the same as the pars struct.
+    struct is the same as the params struct.
 
     The exported optickle model will be saved in
     cached_models/optname_model.h5
