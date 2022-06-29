@@ -287,6 +287,37 @@ def plot_relative_error(ff, arr1, arr2, mag_ax=None, phase_ax=None, **kwargs):
         return fig
 
 
+def plot_tf_error(f_Hz, tfs1, tfs2, ph_lim=[-2, 2]):
+    fig = plt.figure(figsize=(20, 12))
+    gs = fig.add_gridspec(1, 2)
+    gs_tf = gs[0, 0].subgridspec(2, 1, hspace=0.05)
+    gs_err = gs[0, 1].subgridspec(2, 1, hspace=0.05)
+    mag_ax0 = fig.add_subplot(gs_tf[0])
+    ph_ax0 = fig.add_subplot(gs_tf[1], sharex=mag_ax0)
+    mag_ax1 = fig.add_subplot(gs_err[0])
+    ph_ax1 = fig.add_subplot(gs_err[1], sharex=mag_ax1)
+
+    fontsize = 20
+    lw = 4
+
+    plotTF(f_Hz, tfs1, mag_ax0, ph_ax0, label='TF1', lw=lw)
+    plotTF(f_Hz, tfs2, mag_ax0, ph_ax0, ls='--', label='TF2', lw=lw)
+    mag_ax0.legend(fontsize=fontsize)
+    mag_ax0.set_title('Transfer functions')
+
+    plot_relative_error(f_Hz, tfs1, tfs2, mag_ax1, ph_ax1, lw=lw)
+    mag_ax1.set_title('Relative error')
+    ph_ax1.set_ylim(*ph_lim)
+
+    for ax in fig.axes:
+        labels = ax.get_xticklabels() + ax.get_yticklabels()
+        labels.extend([ax.xaxis.label, ax.yaxis.label])
+        for label in labels:
+            label.set_fontsize(fontsize)
+
+    return fig
+
+
 def plot_sb_error(f_Hz, tfs1, tfs2, show_upper=True, show_lower=True, ph_lim=[-2, 2]):
     """Plot the error between to sideband transfer functions
 

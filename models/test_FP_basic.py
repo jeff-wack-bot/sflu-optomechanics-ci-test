@@ -23,7 +23,7 @@ params = Struct(
     Ti     = 0.014,
     Te     = 0,  # 5e-6,
     Larm_m = 40e3,
-    Pin_W  = 1,
+    Pin_W  = 10,
     f1_Hz  = 11e3,
     g1_rad = 0.1,
     Plo_W  = 1,
@@ -138,9 +138,12 @@ def test_sflu_FP(sflu_FP_results, tpath_join, plot_tf, plotTF, pprint):
     fig.savefig(tpath_join('REFL.pdf'))
 
 
-def test_cmp_FP(sflu_FP_results, opt_FP, tpath_join, pprint, plotTF, makegrid):
+def test_cmp_FP(
+        sflu_FP_results, opt_FP, tpath_join, pprint, plotTF, makegrid,
+        plot_tf_error
+):
     results, sflu_tf, Parm_W = sflu_FP_results
-    optickle_tf = opt_FP.getTF('REFL_DIFF', 'EX') / 2  # 2 for the homodyne
+    optickle_tf = -opt_FP.getTF('REFL_DIFF', 'EX') / 2  # 2 for the homodyne
     pprint('SFLU arm power: {:0.1f} W'.format(Parm_W))
     pprint('Optickle arm power: {:0.1f} W'.format(opt_FP.getSigDC('EX_DC')))
 
@@ -156,9 +159,13 @@ def test_cmp_FP(sflu_FP_results, opt_FP, tpath_join, pprint, plotTF, makegrid):
     ax.set_ylim(0.1, 5)
     fig.savefig(tpath_join('ratio.pdf'))
 
+    fig = plot_tf_error(f_Hz, optickle_tf, sflu_tf)
+    fig.axes[0].set_ylabel('Magnitude [W/m]')
+    fig.tight_layout()
+    fig.savefig(tpath_join('error.pdf'))
+
 
 def test_optickle_FP(opt_FP, tpath_join, pprint):
-    pprint(opt_FP.getSigDC('REFL_DIFF'))
     pprint(opt_FP.getSigDC('EX_DC'))
     fig = opt_FP.plotTF('REFL_DIFF', 'EX')
     fig.savefig(tpath_join('REFL.pdf'))

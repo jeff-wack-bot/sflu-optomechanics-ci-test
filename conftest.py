@@ -296,3 +296,9 @@ def plot_tf():
 def plot_tf_homs():
     from tf_lib import plot_tf_homs
     return plot_tf_homs
+
+
+@pytest.fixture
+def plot_tf_error():
+    from tf_lib import plot_tf_error
+    return plot_tf_error
