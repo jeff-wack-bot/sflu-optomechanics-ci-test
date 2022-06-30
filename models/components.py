@@ -29,6 +29,7 @@ class MirrorEdge:
             Thr=0,
             Lhr=0,
             Rar=0,
+            lambda_m=1064e-9,
             mlib=mats_planewave,
     ):
         Rhr = 1 - (Thr + Lhr)
@@ -40,6 +41,7 @@ class MirrorEdge:
         self.t = np.sqrt(Thr)
         self.r = np.sqrt(Rhr)
 
+        self.lambda_m = lambda_m
         self.mlib = mlib
 
     def _edges(self, t, r):
@@ -52,10 +54,19 @@ class MirrorEdge:
         return edge_map
 
     def edgesDC(self):
-        return self._edges(self.mlib.diag(self.t), self.mlib.diag(self.r))
+        edge_map = self._edges(self.mlib.diag(self.t), self.mlib.diag(self.r))
+        edge_map.update({self.name + '.X': self.mlib.Id})
+        return edge_map
 
-    def edgesAC(self, F_Hz):
-        return self._edges(self.mlib.diag(self.t), self.mlib.diag(self.r))
+    def edgesAC(self, F_Hz, resultsDC):
+        edge_map = self._edges(self.mlib.diag(self.t), self.mlib.diag(self.r))
+        try:
+            fieldsDC = resultsDC[self.name + '.fr.i.tp']
+            rtW_m = 4*np.pi/self.lambda_m * self.mlib.Mrotation(np.pi/2) @ fieldsDC
+            edge_map.update({self.name + '.X': rtW_m})
+        except KeyError:
+            pass
+        return edge_map
 
 
 class LinkEdge:
