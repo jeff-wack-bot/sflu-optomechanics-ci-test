@@ -6,6 +6,7 @@ from gwinc.noise.quantum_lib import adjoint, Vnorm_sq
 import matlib
 import scipy.constants as scc
 from copy import deepcopy
+import matplotlib.pyplot as plt
 import pytest
 
 pi2i = 2j * np.pi
@@ -15,7 +16,7 @@ params = Struct(
     Te = 0,
     Larm_m = 40e3,
     Pin_W = 10,
-    Plo_W = 500e-3,
+    Plo_W = 1e4,  # the LO has to be >> than the power on the BHD for optickle quantum noise
     lambda_m = 1064e-9,
     detune_rad = 2*np.pi/180,
 )
@@ -53,7 +54,7 @@ def opt_FP():
     opt.addHomodyneReadout('REFL', LOpower=params.Plo_W)
     opt.addLink('IX', 'bk', 'REFL_BS', 'fr', 0)
 
-    opt.run(F_Hz, noise=False)
+    opt.run(F_Hz)
     return opt
 
 
@@ -125,7 +126,6 @@ def sflu_FP_results(sflu_FP):
     mlib = EX.mlib
 
     edgesDC = {'1': mlib.Id}
-    # edgesDC.update({'EX.X': mlib.Id})
     edgesDC.update(EX.edgesDC())
     edgesDC.update(IX.edgesDC())
     edgesDC.update(ArmLink.edgesDC())
@@ -137,9 +137,7 @@ def sflu_FP_results(sflu_FP):
         {'IX.bk.i.exc': np.sqrt(params.Pin_W) * mlib.LO(np.pi/2)},
     )
 
-    to_W = 4*np.pi/params.lambda_m
     edgesAC = {'1': mlib.Id}
-    # edgesAC.update({'EX.X': to_W * mlib.Mrotation(np.pi/2) @ resultsDC['EX.fr.i.tp']})
     edgesAC.update(EX.edgesAC(F_Hz, resultsDC))
     edgesAC.update(IX.edgesAC(F_Hz, resultsDC))
     edgesAC.update(ArmLink.edgesAC(F_Hz))
@@ -157,7 +155,7 @@ def sflu_FP_results(sflu_FP):
     return resultsDC, resultsAC
 
 
-def test_sflu_FP(sflu_FP_results, tpath_join, plot_tf, plotTF, pprint):
+def test_sflu_FP(sflu_FP_results, tpath_join, plot_tf, plotTF, pprint, makegrid):
     resultsDC, resultsAC = sflu_FP_results
     pprint(resultsDC.keys())
     pprint(resultsAC.keys())
@@ -185,10 +183,20 @@ def test_sflu_FP(sflu_FP_results, tpath_join, plot_tf, plotTF, pprint):
     fig.axes[0].set_ylabel('Magnitude [W/m]')
     fig.savefig(tpath_join('REFL.pdf'))
 
+    qnoise_vac = scc.h * scc.c / params.lambda_m / 2  # \hbar\omega/2
+    qnoise_m_rtHz = np.sqrt(qnoise_vac) / np.abs(tf) * np.sqrt(params.Plo_W)
+
+    fig, ax = plt.subplots()
+    ax.loglog(F_Hz, qnoise_m_rtHz)
+    makegrid(ax, F_Hz)
+    ax.set_xlabel('Frequency [Hz]')
+    ax.set_ylabel(r'Quantum noise [m/Hz$^{1/2}$]')
+    fig.savefig(tpath_join('qnoise.pdf'))
+
 
 def test_cmp_FP(
         sflu_FP_results, opt_FP, matrix_FP, tpath_join, pprint, plotTF,
-        plot_tf_error):
+        plot_tf_error, makegrid):
     # Parm_W = 4 / params.Ti * params.Pin_W
     resultsDC, resultsAC = sflu_FP_results
     fieldsDC = resultsDC['EX.fr.i.tp']
@@ -206,6 +214,12 @@ def test_cmp_FP(
     matrix_tf = matrix_tf[..., 0, 0]
     optickle_tf = -opt_FP.getTF('REFL_DIFF', 'EX') / 2
 
+    qnoise_vac = scc.h * scc.c / params.lambda_m / 2
+    qnoise_sflu_m_rtHz = np.sqrt(qnoise_vac) / np.abs(sflu_tf) * np.sqrt(params.Plo_W)
+    qnoise_optickle_W_rtHz = opt_FP.getQuantumNoise('REFL_DIFF')
+    # factor of 2 undoes the above factor of 2 for the homodyne
+    qnoise_optickle_m_rtHz = qnoise_optickle_W_rtHz / np.abs(2 * optickle_tf)
+
     fig = plotTF(F_Hz, optickle_tf, label='Optickle')
     plotTF(F_Hz, sflu_tf, *fig.axes, ls='--', label='SFLU')
     plotTF(F_Hz, matrix_tf, *fig.axes, ls=':', c='C3', label='Matrix')
@@ -214,14 +228,36 @@ def test_cmp_FP(
     fig.savefig(tpath_join('tf_compare.pdf'))
 
     fig = plot_tf_error(F_Hz, optickle_tf, sflu_tf)
-    fig.axes[0].set_ylabel('Magnitued [W/m]')
+    fig.axes[0].set_ylabel('Magnitude [W/m]')
     fig.tight_layout()
     fig.savefig(tpath_join('error.pdf'))
 
+    fig, ax = plt.subplots()
+    ax.loglog(F_Hz, qnoise_optickle_m_rtHz, label='Optickle')
+    ax.loglog(F_Hz, qnoise_sflu_m_rtHz, ls='--', label='SFLU')
+    makegrid(ax, F_Hz)
+    ax.legend()
+    # ax.set_ylim(1e-20, 1e-17)
+    ax.set_xlabel('Frequency [Hz]')
+    ax.set_ylabel(r'Quantum noise [m/Hz$^{1/2}$]')
+    fig.savefig(tpath_join('qunoise.pdf'))
 
-def test_optickle_FP(opt_FP, tpath_join):
+
+def test_optickle_FP(opt_FP, tpath_join, makegrid):
+    tf = opt_FP.getTF('REFL_DIFF', 'EX')
+    qnoise_W_rtHz = opt_FP.getQuantumNoise('REFL_DIFF')
+    qnoise_m_rtHz = qnoise_W_rtHz / np.abs(tf)
+
     fig = opt_FP.plotTF('REFL_DIFF', 'EX')
     fig.savefig(tpath_join('REFL.pdf'))
+
+    fig, ax = plt.subplots()
+    ax.loglog(F_Hz, qnoise_m_rtHz)
+    makegrid(ax, F_Hz)
+    ax.set_xlabel('Frequency [Hz]')
+    ax.set_ylabel(r'Quantum noise [m/Hz$^{1/2}$]')
+    ax.set_ylim(1e-20, 1e-17)
+    fig.savefig(tpath_join('qnoise.pdf'))
 
 
 def plot_FP_graph(sflu_FP, tpath_join):
