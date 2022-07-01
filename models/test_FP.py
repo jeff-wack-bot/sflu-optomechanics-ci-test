@@ -28,6 +28,9 @@ reduce_list = [
     'IX.fr.i',
     'IX.fr.o',
     'EX.fr.i',
+
+    'IX.bk.i',
+    'IX.bk.o',
 ]
 
 
@@ -95,7 +98,8 @@ def sflu_FP():
     })
 
     ifo['EX'].edges['fr.o', 'fr.o.exc'] = '1'
-    ifo['EX'].edges['fr.o', 'fr.o.pos'] = 'EX.X'
+    ifo['EX'].edges['fr.o', 'fr.o.pos'] = 'EX.fr.px'
+    # ifo['EX'].edges['fr.o', 'fr.o.pos'] = 'EX.X'
     ifo['EX'].edges['fr.i.tp', 'fr.i'] = '1'
     ifo['IX'].edges['bk.o.tp', 'bk.o'] = '1'
     ifo['IX'].edges['bk.i', 'bk.i.exc'] = '1'
