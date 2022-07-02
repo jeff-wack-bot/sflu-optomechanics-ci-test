@@ -25,7 +25,7 @@ params = Struct(
 )
 
 
-reduce_list = [
+reduce_list_simple_cav = [
     'EX.fr.o',
     'IX.fr.i',
     'IX.fr.o',
@@ -34,6 +34,16 @@ reduce_list = [
     'IX.bk.o',
     # 'EX.pos',
     # 'EX.fr.F',
+]
+
+
+reduce_list_reduced_cav = [
+    'EX.fr.o',
+    'IX.fr.i',
+    'IX.fr.o',
+    'EX.fr.i',
+    'IX.bk.i',
+    'IX.bk.o',
 ]
 
 
@@ -105,7 +115,7 @@ def sflu_simple_cav():
     ############################################################
     sflu = SFLU.SFLU(
         edges=ifo.build_edges(),
-        reduce_list=reduce_list,
+        reduce_list=reduce_list_simple_cav,
         graph=True,
     )
     ifo.update_sflu(sflu)
@@ -114,7 +124,7 @@ def sflu_simple_cav():
 
 def test_sflu_simple_cav(sflu_simple_cav, tpath_join, pprint, plotTF):
     sflu = sflu_simple_cav
-    sflu.reduce(*reduce_list)
+    sflu.reduce(*reduce_list_simple_cav)
 
     npts = len(F_Hz)
 
@@ -200,6 +210,174 @@ def test_sflu_simple_cav(sflu_simple_cav, tpath_join, pprint, plotTF):
 
 
 @pytest.fixture
+def sflu_reduced_cav():
+    ifo = optics.GraphElement()
+
+    ############################################################
+    # basis mirror: IX
+    ############################################################
+    ifo.subgraph_add(
+        'IX', optics.BasisMirror(),
+        translation_xy=(-10, 0),
+        rotation_deg=180,
+    )
+    ifo.locations.update({
+        'IX.bk.i.exc': (-20, +5),
+        'IX.bk.o.tp': (-20, -5),
+    })
+    ifo.edges.update({
+        ('IX.bk.i', 'IX.bk.i.exc'): '1',
+        ('IX.bk.o.tp', 'IX.bk.o'): '1',
+    })
+
+    ifo.node_angle['IX.bk.o.tp'] = +45
+
+    ############################################################
+    # simple mirror: EX
+    ############################################################
+
+    ifo.locations.update({
+        'EX.fr.i': (8, +5),
+        'EX.fr.o': (8, -5),
+        # 'EX.pos': (14, 0),
+        # 'EX.fr.F': (14, 4),
+    })
+    ifo.locations.update({
+        'EX.fr.i.tp': (8, 8),
+        'EX.fr.o.exc': (8, -8),
+        'EX.pos.exc': (12, -5),
+        })
+
+    ifo.edges.update({
+        ('EX.fr.o', 'EX.fr.i'): 'EX.fr.r',
+        # ('EX.fr.o', 'EX.pos'): 'EX.px',
+        ('EX.fr.o', 'EX.pos.exc'): 'EX.px',
+        # ('EX.fr.F', 'EX.fr.i'): 'EX.fr.Fq',
+        # ('EX.pos', 'EX.fr.F'): 'EX.fr.chi',
+    })
+
+    ifo.edges.update({
+        ('EX.fr.i.tp', 'EX.fr.i'): '1',
+        ('EX.fr.o', 'EX.fr.o.exc'): '1',
+        # ('EX.pos', 'EX.pos.exc'): '1s',
+    })
+
+    # ifo.node_angle['EX.pos.exc'] = 45
+    ifo.node_angle['EX.fr.o'] = 135
+
+    ############################################################
+    # cavity
+    ############################################################
+    ifo.edges.update({
+        ("EX.fr.i", "IX.fr.o"): 'tau',
+        ("IX.fr.i", "EX.fr.o"): 'tau',
+    })
+
+    ############################################################
+    # building
+    ############################################################
+    sflu = SFLU.SFLU(
+        edges=ifo.build_edges(),
+        reduce_list=reduce_list_simple_cav,
+        graph=True,
+    )
+    ifo.update_sflu(sflu)
+    return sflu
+
+
+def test_sflu_reduced_cav(sflu_reduced_cav, tpath_join, pprint, plotTF):
+    sflu = sflu_reduced_cav
+    sflu.reduce(*reduce_list_reduced_cav)
+
+    npts = len(F_Hz)
+
+    chi = -1/(params.M_kg * (2*np.pi*F_Hz)**2)
+    chi = chi.reshape((npts, 1, 1))
+
+    IX = cmp.MirrorEdge('IX', Thr=params.Thr)
+    # EX = cmp.MirrorEdge('EX', Thr=0)
+    ArmLink = cmp.LinkEdge(
+        'tau', L_m=params.Lcav_m,
+        detune_rad=params.detune_rad,
+    )
+    mlib = IX.mlib
+
+    Id = {
+        '1': mlib.Id,
+        '1s': mlib.Id_s,
+        '1v': mlib.Id_v,
+    }
+
+    edgesDC = deepcopy(Id)
+    edgesDC.update(IX.edgesDC())
+    # edgesDC.update(EX.edgesDC())
+    edgesDC.update(ArmLink.edgesDC())
+
+    edgesDC['EX.fr.r'] = mlib.diag(-1)
+    edgesDC['EX.px'] = Id['1v']
+    # edgesDC['EX.fr.Fq'] = mlib.diag(0)
+    # edgesDC['EX.fr.chi'] = mlib.diag(0)
+    # edgesDC['EX.px'] = np.zeros((2, 1))
+    # edgesDC['EX.fr.Fq'] = np.zeros((1, 2))
+    # edgesDC['EX.fr.chi'] = np.zeros((1, 1))
+
+    compDC = sflu.computer(eye=mlib.Id)
+    compDC.compute(edge_map=edgesDC)
+    resultsDC = compDC.inverse_col(
+        {'EX.fr.i.tp'},
+        {'IX.bk.i.exc': np.sqrt(params.Pin_W) * mlib.LO(np.pi/2)},
+    )
+    pprint(resultsDC['EX.fr.i.tp'])
+
+    edgesAC = deepcopy(Id)
+    edgesAC.update(IX.edgesAC(F_Hz, resultsDC))
+    # edgesAC.update(EX.edgesAC(F_Hz, resultsDC))
+    edgesAC.update(ArmLink.edgesAC(F_Hz))
+
+    fieldsDC = resultsDC['EX.fr.i.tp']
+    px = 4*np.pi/params.lambda_m * mlib.Mrotation(np.pi/2) @ fieldsDC
+    pprint('px', px.shape)
+
+    Fq = 4/scc.c * adjoint(fieldsDC)
+    pprint('Fq', Fq.shape)
+
+    pprint((px @ chi @ Fq).shape)
+
+    edgesAC['EX.fr.r'] = mlib.diag(-1) + px @ chi @ Fq
+    edgesAC['EX.px'] = px
+
+    # edgesAC['EX.px'] = px
+    # edgesAC['EX.fr.Fq'] = Fq
+    # edgesAC['EX.fr.chi'] = chi
+
+    compAC = sflu.computer(eye=mlib.Id)
+    compAC.compute(edge_map=edgesAC)
+    resultsAC = compAC.inverse_row(
+        {'IX.bk.o.tp': None},
+        {
+            'EX.fr.o.exc',
+            'EX.pos.exc',
+        },
+    )
+    pprint('EX.fr.o.exc', resultsAC['EX.fr.o.exc'].shape)
+    pprint('EX.pos.exc', resultsAC['EX.pos.exc'].shape)
+
+    LOa = np.sqrt(params.Plo_W) * adjoint(mlib.LO(0))
+    tf = LOa @ resultsAC['EX.fr.o.exc'] @ px
+    pprint('tf', tf.shape)
+    tf = tf[..., 0, 0]
+
+    tf2 = LOa @ resultsAC['EX.pos.exc']
+    pprint('tf2', tf2.shape)
+    tf2 = tf2[..., 0, 0]
+
+    fig = plotTF(F_Hz, tf)
+    plotTF(F_Hz, tf2, *fig.axes, ls='--')
+    fig.axes[0].set_ylabel('Magnitude [W/m]')
+    fig.savefig(tpath_join('tf.pdf'))
+
+
+@pytest.fixture
 @matlib.optickle_model('opt_simple_cav', params)
 def opt_simple_cav():
     import qlance.optickle as qopt
@@ -230,7 +408,7 @@ def test_optickle_simple_cav(opt_simple_cav, tpath_join, pprint, plotTF):
     opt = opt_simple_cav
     tf = -opt.getTF('REFL_DIFF', 'EX') / 2
     fig = plotTF(F_Hz, tf)
-    fig.axes[0].set_ylabel('Magnitued [W/m]')
+    fig.axes[0].set_ylabel('Magnitude [W/m]')
     fig.savefig(tpath_join('tf.pdf'))
 
 
@@ -238,7 +416,22 @@ def plot_simple_cav_graph(sflu_simple_cav, tpath_join):
     sflu = sflu_simple_cav
     G1 = sflu.G.copy()
     sflu.graph_reduce_auto_pos(lX=-12, rX=+12, Y=0, dY=-5)
-    sflu.reduce(*reduce_list)
+    sflu.reduce(*reduce_list_simple_cav)
+    sflu.graph_reduce_auto_pos(lX=-15, rX=+15, Y=-5, dY=-5)
+    G2 = sflu.G.copy()
+
+    nx2tikz.dump_pdf(
+        [G1, G2],
+        fname = tpath_join('testG.pdf'),
+        scale='10pt',
+    )
+
+
+def plot_reduced_cav_graph(sflu_reduced_cav, tpath_join):
+    sflu = sflu_reduced_cav
+    G1 = sflu.G.copy()
+    sflu.graph_reduce_auto_pos(lX=-12, rX=+12, Y=0, dY=-5)
+    sflu.reduce(*reduce_list_reduced_cav)
     sflu.graph_reduce_auto_pos(lX=-15, rX=+15, Y=-5, dY=-5)
     G2 = sflu.G.copy()
 
