@@ -269,7 +269,7 @@ class SimpleMirror(optics.GraphElement):
         #     "fr.v": (-4, -6),
         # })
         self.locations.update({
-            "fr.i.exc": (-12, +8),
+            "Fr.i.exc": (-12, +8),
             "fr.o.exc": (-5, -11),
             "fr.i.tp": (-5, +11),
             "fr.o.tp": (-12, -8),
@@ -348,4 +348,99 @@ class SimpleMirrorEdge:
         px = 4*np.pi/self.lambda_m * self.mlib.Mrotation(np.pi/2) @ fieldsDC
         px = np.repeat(px[np.newaxis, :, :], npts, axis=0)
         edge_map[self.name + '.fr.px'] = px
+        return edge_map
+
+
+class HRMirrorRPReduced(optics.GraphElement):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.locations.update({
+            'fr.i': (-4, +5),
+            'fr.o': (-4, -5),
+            'pos.exc': (+4, -5),
+            'pos.tp': (+4, +5),
+            'fr.F.i.exc': (+5, +8),
+            'fr.i.tp': (-1, +8),
+            'fr.o.tp': (-1, -8),
+        })
+
+        self.edges.update({
+            ('fr.o', 'fr.i'): '.fr.r',
+            ('pos.tp', 'fr.i'): '.fr.xq',
+            ('fr.o', 'pos.exc'): '.fr.px',
+            ('pos.tp', 'pos.exc'): '.xx',
+            ('pos.tp', 'fr.F.i.exc'): '.fr.xF',
+            ('fr.o', 'fr.F.i.exc'): '.fr.pF',
+            ('fr.i.tp', 'fr.i'): '1',
+            ('fr.o.tp', 'fr.o'): '1',
+        })
+
+    def properties(self, nodes, edges, rot_deg, **kwargs):
+        nodes["fr.o"]['angle'] = +135
+        nodes['fr.i']['angle'] = +135
+        nodes['fr.F.i.exc']['angle'] = +45
+        edges[('fr.o', 'fr.i')]['handed'] = 'r'
+        edges[('fr.o', 'fr.F.i.exc')]['handed'] = 'r'
+
+
+class HRMirrorRPReducedEdge:
+    def __init__(
+            self,
+            name,
+            Thr=0,
+            M_kg=None,
+            lambda_m=1064e-9,
+            mlib=mats_planewave,
+    ):
+        self.name = name
+        self.t = np.sqrt(Thr)
+        self.r = np.sqrt(1 - Thr)
+        self.M_kg = M_kg
+        self.lambda_m = lambda_m
+        self.mlib = mlib
+
+    def _optic_edges(self, r):
+        edge_map = {
+            self.name + '.fr.r': -r,
+        }
+        return edge_map
+
+    def edgesDC(self):
+        edge_map = self._optic_edges(self.mlib.diag(self.r))
+        zz = np.zeros_like(self.mlib.Id)
+        edge_map.update({
+            self.name + '.fr.xq': zz,
+            self.name + '.fr.px': zz,
+            self.name + '.xx': zz,
+            self.name + '.fr.pF': zz,
+            self.name + '.fr.xF': zz,
+        })
+        return edge_map
+
+    def edgesAC(self, F_Hz, resultsDC):
+        edge_map = {}
+        fieldsDC_i = resultsDC[self.name + '.fr.i.tp']
+        fieldsDC_o = resultsDC[self.name + '.fr.o.tp']
+        # displacement to p (phase) quadrature [rtW/m]
+        px = -4*np.pi/self.lambda_m * self.r * self.mlib.Mrotation(np.pi/2) @ fieldsDC_i
+        # q (amplitude) quadrature to force [N/rtW]
+        Fq_i = -2/scc.c * adjoint(fieldsDC_i)
+        Fq_o = -2/scc.c * adjoint(fieldsDC_o)
+        # mechanical susceptibility
+        chi = -1/(self.M_kg * (2*np.pi*F_Hz)**2)
+        chi = chi.reshape((len(F_Hz), 1, 1))  # is this necessary?
+        # closed loop
+        cl = self.mlib.Minv(self.mlib.Id - px @ chi @ Fq_o)
+        fr_r = -self.mlib.diag(self.r) + px @ chi @ Fq_i
+        # gotta be careful about signs when calling _optic_edges with full mirror...
+        # edge_map['fr.r'] = self.mlib.diag(-self.r) + cl @ px @ chi @ fieldsDC_i
+        edge_map = {
+            'fr.r': cl @ fr_r,
+            'fr.xq': chi @ (Fq_i + Fq_o @ cl @ fr_r),
+            'fr.pF': cl @ px @ chi,
+            'fr.px': cl @ px,
+            'xx': self.mlib.Id_s + chi @ Fq_o @ cl @ px,
+            'fr.xF': (self.mlib.Id_s + chi @ Fq_o @ cl @ px) @ chi,
+        }
+        edge_map = {self.name + '.' + k: v for k, v in edge_map.items()}
         return edge_map
