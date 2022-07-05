@@ -110,6 +110,10 @@ def sflu_simple_cav():
         ("IX.fr.i", "EX.fr.o"): 'tau',
     })
 
+    print('angle', ifo.node_angle)
+    print('hand', ifo.edge_handedness)
+    print('edges', ifo.edges)
+
     ############################################################
     # building
     ############################################################

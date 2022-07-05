@@ -266,7 +266,7 @@ def test_sflu_HRMirrorRPReduced(
     mech_tf = resultsAC_mech['EX.fr.F.i.exc']
     # mech_tf = resultsAC_mech['EX.pos.exc']
     opt_tf_optickle = opt.getTF('REFL_DIFF', 'EX') / 2
-    # mechmod = opt.getMechMod('EX', 'EX')
+    mechmod = opt.getMechMod('EX', 'EX')
 
     fig = plotTF(F_Hz, opt_tf, label='SFLU')
     plotTF(F_Hz, opt_tf_optickle, *fig.axes, ls='--', label='Optickle')
@@ -277,7 +277,7 @@ def test_sflu_HRMirrorRPReduced(
     # fig = plotTF(F_Hz, mech_tf[:, 0, 0], label='SFLU')
     fig = plotTF(F_Hz, mech_tf, label='SFLU')
     opt.plotMechTF('EX', 'EX', *fig.axes, ls='--', label='Optickle')
-    # plotTF(F_Hz, mechmod, *fig.axes, ls=':', label='mechmod')
+    plotTF(F_Hz, mechmod, *fig.axes, ls=':', label='mechmod')
     fig.axes[0].legend()
     fig.axes[0].set_ylabel('Magnitude [m/N]')
     fig.savefig(tpath_join('mechanical_tf.pdf'))

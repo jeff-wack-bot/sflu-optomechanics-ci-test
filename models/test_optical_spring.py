@@ -1,0 +1,492 @@
+"""
+Tests of SFLU radiation pressure effects with an optical spring model consisting
+of a single FP cavity. The ETM is treated as a mirror with only an HR surface
+for simplicity since that is all that is needed for this simple case.
+
+Two methods are compared
+* Hardcoding the Gaussian elimination on the radiation pressure loop into the
+mirror definition. These are the HRMirrorRPReduced models.
+* Using the full radiation pressure graph with no manual reduction. These are
+the HRMirrorRP models.
+"""
+import numpy as np
+from wavestate.control.SFLU import SFLU, optics, nx2tikz
+import components as cmp
+from gwinc.struct import Struct
+from gwinc.noise.quantum_lib import adjoint, Vnorm_sq
+import matlib
+import scipy.constants as scc
+from copy import deepcopy
+import matplotlib.pyplot as plt
+import pytest
+
+pi2i = 2j * np.pi
+
+F_Hz = np.logspace(-1, 4, 3000)
+
+
+params = Struct(
+    Ti = 0.2,
+    Larm_m = 40e3,
+    M_kg = 10,
+    Pin_W = 100,
+    Plo_W = 1,
+    detune_rad = -3*np.pi/180,
+    lambda_m = 1064e-9,
+)
+
+################################################################################
+# Manual Gaussian elimination
+################################################################################
+
+reduce_list_HRMirrorRPReduced = [
+    'EX.fr.i',
+    'IX.fr.i',
+    'EX.fr.o',
+    'IX.fr.o',
+    'IX.bk.i',
+    'IX.bk.o',
+]
+
+
+@pytest.fixture
+def sflu_HRMirrorRPReduced():
+    """
+    SFLU model of an FP cavity using a BasisMirror for the ITM and a mirror with
+    only an HR surface for the ETM but which include radiation pressure effects
+    calculated by Gaussian elimination hardcoded in the definition
+    """
+    ifo = optics.GraphElement()
+    ifo.subgraph_add(
+        'IX', optics.BasisMirror(),
+        translation_xy=(-10, 0),
+        rotation_deg=180,
+    )
+    ifo.subgraph_add(
+        'EX', cmp.HRMirrorRPReduced(),
+        translation_xy=(+10, 0),
+        rotation_deg=0,
+    )
+    ifo.edges.update({
+        ('EX.fr.i', 'IX.fr.o'): 'tau',
+        ('IX.fr.i', 'EX.fr.o'): 'tau',
+    })
+
+    ifo['IX'].locations.update({
+        'bk.i.exc': (+6, -5),
+        'bk.o.tp': (+6, +5),
+    })
+    ifo['IX'].edges.update({
+        ('bk.i', 'bk.i.exc'): '1',
+        ('bk.o.tp', 'bk.o'): '1',
+    })
+
+    ifo.node_angle['IX.bk.i.exc'] = 135
+    ifo.node_angle['IX.bk.o.tp'] = -135
+
+    sflu = SFLU.SFLU(
+        edges=ifo.build_edges(),
+        reduce_list=reduce_list_HRMirrorRPReduced,
+        graph=True,
+    )
+    ifo.update_sflu(sflu)
+    return sflu
+
+
+@pytest.fixture
+def sflu_HRMirrorRPReduced_results(sflu_HRMirrorRPReduced, pprint):
+    """
+    Do the actual calculation for the manual Gaussian elimination of radiation
+    pressure effects.
+
+    This is made a fixture so that it can be used both to compare with Optickle and
+    be used in SFLU only tests not needing Optickle or qlance to be installed
+    """
+    sflu = sflu_HRMirrorRPReduced
+    sflu.reduce(*reduce_list_HRMirrorRPReduced)
+
+    EX = cmp.HRMirrorRPReducedEdge('EX', Thr=0, M_kg=params.M_kg)
+    IX = cmp.MirrorEdge('IX', Thr=params.Ti)
+    ArmLink = cmp.LinkEdge(
+        'tau', L_m=params.Larm_m,
+        detune_rad=params.detune_rad,
+    )
+    mlib = EX.mlib
+
+    ##################################################
+    # DC calculation
+    ##################################################
+    edgesDC = {'1': mlib.Id}
+    edgesDC.update(EX.edgesDC())
+    edgesDC.update(IX.edgesDC())
+    edgesDC.update(ArmLink.edgesDC())
+
+    compDC = sflu.computer(eye=mlib.Id)
+    compDC.compute(edge_map=edgesDC)
+    resultsDC = compDC.inverse_col(
+        {
+            'EX.fr.i.tp',
+            'EX.fr.o.tp',
+        },
+        {'IX.bk.i.exc': np.sqrt(params.Pin_W) * mlib.LO(np.pi/2)}
+    )
+    pprint(resultsDC['EX.fr.i.tp'])
+    pprint(resultsDC['EX.fr.o.tp'])
+
+    ##################################################
+    # AC calculation
+    ##################################################
+    edgesAC = {'1': mlib.Id}
+    edgesAC.update(EX.edgesAC(F_Hz, resultsDC))
+    edgesAC.update(IX.edgesAC(F_Hz, resultsDC))
+    edgesAC.update(ArmLink.edgesAC(F_Hz))
+
+    compAC = sflu.computer(eye=mlib.Id)
+    compAC.compute(edge_map=edgesAC)
+    resultsAC_opt = compAC.inverse_row(
+        {'IX.bk.o.tp': None},
+        {'EX.pos.exc'},
+    )
+    resultsAC_mech = compAC.inverse_row(
+        {'EX.pos.tp': None},
+        {'EX.fr.F.i.exc'},
+        # {'EX.pos.exc'},
+    )
+    pprint(resultsAC_opt['EX.pos.exc'].shape)
+    pprint(resultsAC_mech['EX.fr.F.i.exc'].shape)
+    # pprint(resultsAC_mech['EX.pos.exc'].shape)
+
+    return resultsDC, resultsAC_opt, resultsAC_mech
+
+
+def test_sflu_HRMirrorRPReduced(
+        sflu_HRMirrorRPReduced_results, tpath_join, pprint, plotTF):
+    """
+    Plot the optical response to ETM mirror motion and the radiation pressure
+    modified mechanical response of the ETM.
+    """
+    resultsDC, resultsAC_opt, resultsAC_mech = sflu_HRMirrorRPReduced_results
+    mlib = cmp.mats_planewave
+
+    LOa = np.sqrt(params.Plo_W) * adjoint(mlib.LO(0))
+    opt_tf = LOa @ resultsAC_opt['EX.pos.exc']
+    opt_tf = opt_tf[..., 0, 0]
+    mech_tf = resultsAC_mech['EX.fr.F.i.exc']
+
+    fig = plotTF(F_Hz, opt_tf, label='SFLU')
+    fig.axes[0].legend()
+    fig.axes[0].set_title('Phase response to mirror motion')
+    fig.axes[0].set_ylabel('Magnitude [W/m]')
+    fig.savefig(tpath_join('optical_tf.pdf'))
+
+    fig = plotTF(F_Hz, mech_tf, label='SFLU')
+    fig.axes[0].set_title('Radiation pressure modified mechanical susceptibility')
+    fig.axes[0].legend()
+    fig.axes[0].set_ylabel('Magnitude [m/N]')
+    fig.savefig(tpath_join('mechanical_tf.pdf'))
+
+
+def test_HRMirrorRPReduced_compare_optickle(
+        sflu_HRMirrorRPReduced_results, tpath_join, pprint, plotTF, opt_FP):
+    """
+    Make the same plots as test_sflu_HRMirrorRPReduced comparing with Optickle as well
+    """
+    resultsDC, resultsAC_opt, resultsAC_mech = sflu_HRMirrorRPReduced_results
+    mlib = cmp.mats_planewave
+    opt = opt_FP
+
+    LOa = np.sqrt(params.Plo_W) * adjoint(mlib.LO(0))
+    opt_tf = LOa @ resultsAC_opt['EX.pos.exc']
+    opt_tf = opt_tf[..., 0, 0]
+    mech_tf = resultsAC_mech['EX.fr.F.i.exc']
+    opt_tf_optickle = opt.getTF('REFL_DIFF', 'EX') / 2  # factor of 2 for BHD BS
+    # mechmod = opt.getMechMod('EX', 'EX')
+
+    fig = plotTF(F_Hz, opt_tf, label='SFLU')
+    plotTF(F_Hz, opt_tf_optickle, *fig.axes, ls='--', label='Optickle')
+    fig.axes[0].legend()
+    fig.axes[0].set_title('Phase response to mirror motion')
+    fig.axes[0].set_ylabel('Magnitude [W/m]')
+    fig.savefig(tpath_join('optical_tf.pdf'))
+
+    fig = plotTF(F_Hz, mech_tf, label='SFLU')
+    opt.plotMechTF('EX', 'EX', *fig.axes, ls='--', label='Optickle')
+    # plotTF(F_Hz, mechmod, *fig.axes, ls=':', label='mechmod')
+    fig.axes[0].set_title('Radiation pressure modified mechanical susceptibility')
+    fig.axes[0].legend()
+    fig.axes[0].set_ylabel('Magnitude [m/N]')
+    fig.savefig(tpath_join('mechanical_tf.pdf'))
+
+
+################################################################################
+# Full graph
+################################################################################
+
+
+reduce_list_HRMirrorRP = [
+    'EX.fr.o',
+    'IX.fr.i',
+    'IX.fr.o',
+    'EX.fr.i',
+    'IX.bk.i',
+    'IX.bk.o',
+    'EX.pos',
+    'EX.fr.F.i',
+    'EX.fr.F.o',
+]
+
+
+@pytest.fixture
+def sflu_HRMirrorRP():
+    """
+    SFLU model of an FP cavity using a BasisMirror for the ITM and a mirror with
+    only an HR surface for the ETM but which includes radiation pressure effects
+    using a full graph
+    """
+    ifo = optics.GraphElement()
+
+    ############################################################
+    # basis mirror: IX
+    ############################################################
+    ifo.subgraph_add(
+        'IX', optics.BasisMirror(),
+        translation_xy=(-10, 0),
+        rotation_deg=180,
+    )
+    ifo.locations.update({
+        'IX.bk.i.exc': (-20, +5),
+        'IX.bk.o.tp': (-20, -5),
+    })
+    ifo.edges.update({
+        ('IX.bk.i', 'IX.bk.i.exc'): '1',
+        ('IX.bk.o.tp', 'IX.bk.o'): '1',
+    })
+
+    ifo.node_angle['IX.bk.o.tp'] = +45
+
+    ############################################################
+    # RP mirror: EX
+    ############################################################
+
+    # set extra_tp=False to remove the fr.F.i.exc, pos.tp, and pos.exc
+    # test points for debugging, though this doesn't seem to change the issue
+    ifo.subgraph_add(
+        'EX', cmp.HRMirrorRP(extra_tp=True),
+        translation_xy=(+10, 0),
+        rotation_deg=0,
+    )
+
+    ############################################################
+    # cavity
+    ############################################################
+    ifo.edges.update({
+        ("EX.fr.i", "IX.fr.o"): 'tau',
+        ("IX.fr.i", "EX.fr.o"): 'tau',
+    })
+
+    ############################################################
+    # building
+    ############################################################
+    sflu = SFLU.SFLU(
+        edges=ifo.build_edges(),
+        reduce_list=reduce_list_HRMirrorRP,
+        graph=True,
+    )
+    ifo.update_sflu(sflu)
+    return sflu
+
+
+def test_sflu_HRMirrorRP(sflu_HRMirrorRP, tpath_join, pprint, plotTF):
+    """
+    Solve the SFLU model defined in sflu_HRMirrorRP
+    """
+    sflu = sflu_HRMirrorRP
+    sflu.reduce(*reduce_list_HRMirrorRP)
+
+    npts = len(F_Hz)
+
+    chi = -1/(params.M_kg * (2*np.pi*F_Hz)**2)
+    chi = chi.reshape((npts, 1, 1))
+
+    IX = cmp.MirrorEdge('IX', Thr=params.Ti)
+    # EX = cmp.MirrorEdge('EX', Thr=0)
+    ArmLink = cmp.LinkEdge(
+        'tau', L_m=params.Larm_m,
+        detune_rad=params.detune_rad,
+    )
+    mlib = IX.mlib
+
+    Id = {
+        '1': mlib.Id,     # 2x2 matrix identity
+        '1s': mlib.Id_s,  # 1x1 scalar identity
+        '1v': mlib.Id_v,  # 2x1 vector identity
+        '1a': mlib.Id_a,  # 1x2 adjoint identity
+    }
+    Zz = {k: np.zeros_like(mlib[k]) for k in mlib.keys() if 'Id' in k}
+
+    ##################################################
+    # DC calculation
+    ##################################################
+
+    edgesDC = deepcopy(Id)
+    edgesDC.update(IX.edgesDC())
+    # edgesDC.update(EX.edgesDC())
+    edgesDC.update(ArmLink.edgesDC())
+
+    edgesDC['EX.fr.r'] = mlib.diag(-1)
+    # no radiation pressure at DC
+    edgesDC['EX.px'] = mlib.diag(0)
+    edgesDC['EX.fr.Fq.i'] = mlib.diag(0)
+    edgesDC['EX.fr.Fq.o'] = mlib.diag(0)
+    edgesDC['EX.chi'] = mlib.diag(0)
+
+    # strictly speaking, these should be the correct dimensions but lead to the same
+    # matrix dimension errors as the AC graph below
+    # edgesDC['EX.px'] = np.zeros((2, 1))
+    # edgesDC['EX.fr.Fq.i'] = np.zeros((1, 2))
+    # edgesDC['EX.fr.Fq.o'] = np.zeros((1, 2))
+    # edgesDC['EX.chi'] = np.zeros((1, 1))
+
+    compDC = sflu.computer(eye=mlib.Id)
+    compDC.compute(edge_map=edgesDC)
+    resultsDC = compDC.inverse_col(
+        {
+            'EX.fr.i.tp',
+            'EX.fr.o.tp',
+        },
+        {'IX.bk.i.exc': np.sqrt(params.Pin_W) * mlib.LO(np.pi/2)},
+    )
+    pprint(resultsDC['EX.fr.i.tp'])
+    pprint(resultsDC['EX.fr.o.tp'])
+
+    ##################################################
+    # AC calculation
+    ##################################################
+
+    edgesAC = deepcopy(Id)
+    edgesAC.update(IX.edgesAC(F_Hz, resultsDC))
+    # edgesAC.update(EX.edgesAC(F_Hz, resultsDC))
+    edgesAC.update(ArmLink.edgesAC(F_Hz))
+
+    fieldsDC_i = resultsDC['EX.fr.i.tp']
+    fieldsDC_o = resultsDC['EX.fr.o.tp']
+
+    # displacement to p (phase) quadrature
+    px = -4*np.pi/params.lambda_m * mlib.Mrotation(np.pi/2) @ fieldsDC_i
+    pprint('px', px.shape)
+
+    # q (amplitude) quadrature to force
+    Fq_i = -2/scc.c * adjoint(fieldsDC_i)
+    Fq_o = -2/scc.c * adjoint(fieldsDC_o)
+    pprint('Fq_i', Fq_i.shape)
+    pprint('Fq_o', Fq_o.shape)
+
+    # mechanical susceptibility
+    chi = -1/(params.M_kg * (2*np.pi*F_Hz)**2)
+    chi = chi.reshape((len(F_Hz), 1, 1))
+    pprint('chi', chi.shape)
+
+    edgesAC['EX.fr.r'] = mlib.diag(-1)
+    edgesAC['EX.px'] = px
+    edgesAC['EX.fr.Fq.i'] = Fq_i
+    edgesAC['EX.fr.Fq.o'] = Fq_o
+    edgesAC['EX.chi'] = chi
+
+    # check dimensions of some propagators; everything looks OK
+    rt = px @ chi @ Fq_o
+    cl = mlib.Minv(mlib.Id - rt)
+    fr_r = mlib.diag(-1) + px @ chi @ Fq_i
+    pprint('round trip', rt.shape)
+    pprint('closed loop', cl.shape)
+    pprint('front reflection', fr_r.shape)
+
+    compAC = sflu.computer(eye=mlib.Id)
+    compAC.compute(edge_map=edgesAC)
+    resultsAC = compAC.inverse_row(
+        {'IX.bk.o.tp': None},
+        {
+            # 'EX.fr.o.exc',
+            'EX.pos.exc',
+        },
+    )
+    pprint(resultsAC['EX.pos.exc'].shape)
+
+    # LOa = np.sqrt(params.Plo_W) * adjoint(mlib.LO(0))
+    # tf = LOa @ resultsAC['EX.fr.o.exc'] @ px
+    # pprint('tf', tf.shape)
+    # tf = tf[..., 0, 0]
+
+    # tf2 = LOa @ resultsAC['EX.pos.exc']
+    # pprint('tf2', tf2.shape)
+    # tf2 = tf2[..., 0, 0]
+
+    # fig = plotTF(F_Hz, tf)
+    # plotTF(F_Hz, tf2, *fig.axes, ls='--')
+    # fig.axes[0].set_ylabel('Magnitude [W/m]')
+    # fig.savefig(tpath_join('tf.pdf'))
+
+
+################################################################################
+
+def plot_HRMirrorRPReduced_graph(sflu_HRMirrorRPReduced, tpath_join):
+    sflu = sflu_HRMirrorRPReduced
+    G1 = sflu.G.copy()
+    sflu.graph_reduce_auto_pos(lX=-12, rX=+12, Y=0, dY=-5)
+    sflu.reduce(*reduce_list_HRMirrorRPReduced)
+    sflu.graph_reduce_auto_pos(lX=-15, rX=+15, Y=-5, dY=-5)
+    G2 = sflu.G.copy()
+
+    nx2tikz.dump_pdf(
+        [G1, G2],
+        fname = tpath_join('testG.pdf'),
+        scale='10pt',
+    )
+
+
+def plot_HRMirrorRP_graph(sflu_HRMirrorRP, tpath_join):
+    sflu = sflu_HRMirrorRP
+    G1 = sflu.G.copy()
+    sflu.graph_reduce_auto_pos(lX=-12, rX=+12, Y=0, dY=-5)
+    sflu.reduce(*reduce_list_HRMirrorRP)
+    sflu.graph_reduce_auto_pos(lX=-15, rX=+15, Y=-5, dY=-5)
+    G2 = sflu.G.copy()
+
+    nx2tikz.dump_pdf(
+        [G1, G2],
+        fname = tpath_join('testG.pdf'),
+        scale='10pt',
+    )
+
+
+################################################################################
+# optickle model for comparison
+################################################################################
+
+@pytest.fixture
+@matlib.optickle_model('opt_FP', params)
+def opt_FP():
+    """
+    Optickle model for a FP cavity
+    """
+    import qlance.optickle as qopt
+    eng = matlib.start_matlab_engine()
+
+    opt = qopt.Optickle(eng, 'opt', lambda0=params.lambda_m)
+    opt.addMirror('IX', Thr=params.Ti)
+    opt.addMirror('EX', Thr=0)
+    opt.addLink('IX', 'fr', 'EX', 'fr', params.Larm_m)
+    opt.addLink('EX', 'fr', 'IX', 'fr', params.Larm_m)
+    opt.setMechTF('EX', [], [0, 0], 1/params.M_kg)
+
+    detune_m = params.lambda_m*params.detune_rad / (2*np.pi)
+    opt.setPosOffset('EX', detune_m)
+
+    opt.addSource('Laser', np.sqrt(params.Pin_W))
+    opt.addLink('Laser', 'out', 'IX', 'bk', 0)
+
+    opt.addProbeIn('EX_DC', 'EX', 'fr', 0, 0)
+    opt.addHomodyneReadout('REFL', LOpower=params.Plo_W)
+    opt.addLink('IX', 'bk', 'REFL_BS', 'fr', 0)
+
+    opt.run(F_Hz)
+    return opt

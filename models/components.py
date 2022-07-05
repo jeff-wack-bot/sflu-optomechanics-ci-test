@@ -14,20 +14,16 @@ from gwinc.noise.quantum_lib import (
 pi2i = 2j*np.pi
 
 mats_planewave.update(Struct(
-    Id_s = np.ones((1, 1)),
-    Id_v = np.ones((2, 1)),
-    Id_a = np.ones((1, 2)),
+    Id_s = np.ones((1, 1)),  # scalar identity
+    Id_v = np.ones((2, 1)),  # vector identity
+    Id_a = np.ones((1, 2)),  # adjoint identity
 ))
 
 
-def assert_optic_properties(R_or_T, L=0):
-    assert(R_or_T >= 0 and R_or_T <= 1)
-    assert(L >= 0 and L <= 1)
-    T_or_R = 1 - (R_or_T + L)
-    assert(T_or_R >= 0 and T_or_R <= 1)
-
-
 class MirrorEdge:
+    """
+    Defines DC and AC edges for a simple mirror like a BasisMirror
+    """
     def __init__(
             self,
             name,
@@ -39,8 +35,6 @@ class MirrorEdge:
     ):
         Rhr = 1 - (Thr + Lhr)
         Tar = 1 - Rar
-        assert_optic_properties(Thr, Lhr)
-        assert_optic_properties(Rar)
 
         self.name = name
         self.t = np.sqrt(Thr)
@@ -59,11 +53,20 @@ class MirrorEdge:
         return edge_map
 
     def edgesDC(self):
+        """
+        Returns the DC edge map dictionary
+        """
         edge_map = self._edges(self.mlib.diag(self.t), self.mlib.diag(self.r))
         edge_map.update({self.name + '.fr.px': self.mlib.Id})
         return edge_map
 
     def edgesAC(self, F_Hz, resultsDC):
+        """
+        Returns the AC edge map dictionary
+
+        F_Hz: Frequency vector at which to evaluate the edge map
+        resultsDC: the dictionary of DC results
+        """
         edge_map = self._edges(self.mlib.diag(self.t), self.mlib.diag(self.r))
         try:
             fieldsDC = resultsDC[self.name + '.fr.i.tp']
@@ -74,71 +77,10 @@ class MirrorEdge:
         return edge_map
 
 
-class MirrorEdgeRP:
-    def __init__(
-            self,
-            name,
-            Thr=0,
-            Lhr=0,
-            Rar=0,
-            lambda_m=1064e-9,
-            mlib=mats_planewave,
-    ):
-        Rhr = 1 - (Thr + Lhr)
-        Tar = 1 - Rar
-        assert_optic_properties(Thr, Lhr)
-        assert_optic_properties(Rar)
-
-        self.name = name
-        self.t = np.sqrt(Thr)
-        self.r = np.sqrt(Rhr)
-
-        self.lambda_m = lambda_m
-        self.mlib = mlib
-
-    def _edges(self, t, r):
-        edge_map = {
-            self.name + '.fr.t': t,
-            self.name + '.bk.t': t,
-            self.name + '.fr.r': -r,
-            self.name + '.bk.r': +r,
-        }
-        return edge_map
-
-    def edgesDC(self):
-        edge_map = self._edges(self.mlib.diag(self.t), self.mlib.diag(self.r))
-        dim = self.mlib.Id.shape[0]
-        zz = np.zeros_like(self.mlib.Id)
-
-        # edge_map.update({self.name + '.fr.Fq': zz})
-        # edge_map.update({self.name + '.fr.chi': zz})
-        # edge_map.update({self.name + '.fr.px': zz})
-
-        edge_map.update({self.name + '.fr.Fq': np.zeros((1, 2))})
-        edge_map.update({self.name + '.fr.chi': np.zeros((1, 1))})
-        edge_map.update({self.name + '.fr.px': np.zeros((2, 1))})
-
-        # edge_map.update({self.name + '.fr.px': self.mlib.Id})
-        # edge_map.update({self.name + '.fr.Fq': self.mlib.Id})
-        # edge_map.update({self.name + '.fr.chi': self.mlib.Id})
-        return edge_map
-
-    def edgesAC(self, F_Hz, resultsDC):
-        edge_map = self._edges(self.mlib.diag(self.t), self.mlib.diag(self.r))
-        try:
-            fieldsDC = resultsDC[self.name + '.fr.i.tp']
-            rtW_m = 4*np.pi/self.lambda_m * self.mlib.Mrotation(np.pi/2) @ fieldsDC
-            edge_map[self.name + '.fr.px'] = rtW_m
-            # edge_map.update({self.name + '.X': rtW_m})
-
-            edge_map[self.name + '.fr.Fq'] = 4/scc.c * adjoint(fieldsDC)
-            edge_map[self.name + '.fr.chi'] = np.ones((len(F_Hz), 1, 1))
-        except KeyError:
-            pass
-        return edge_map
-
-
 class LinkEdge:
+    """
+    Defines DC and AC edges for propagation links
+    """
     def __init__(
             self,
             name,
@@ -158,200 +100,29 @@ class LinkEdge:
         return edge_map
 
     def edgesDC(self):
+        """
+        Returns the DC edge map dictionary
+        """
         Lmat = self.mlib.Mrotation(self.detune_rad)
         return self._edges(Lmat)
 
     def edgesAC(self, F_Hz):
+        """
+        Returns the AC edge map dictionary
+
+        F_Hz: Frequency vector at which to evaluate the edge map
+        """
         delay = self.mlib.diag(np.exp(-pi2i * F_Hz * self.L_m / scc.c))
         Lmat = delay @ self.mlib.Mrotation(self.detune_rad)
         return self._edges(Lmat)
 
 
-class MirrorRP(optics.Mirror):
-    """
-    A mirror that can have a mechanical susceptibility and experience radiation pressure
-    """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.locations.update({
-            "fr.i": (-6, +8),
-            "fr.o": (-6, -8),
-            "bk.i": (+6, -8),
-            "bk.o": (+6, +8),
-        })
-        self.locations.update({
-            "fr.F": (0, 3),
-            "pos":  (0, 0),
-
-            # "fr.a": (-4, +6),
-            "fr.v": (-4, -6),
-        })
-        self.locations.update({
-            "pos.exc": (+9, 0),
-            "pos.tp":  (-9, 0),
-            "fr.F.exc": (+3, +11),
-        })
-
-        self.edges.update({
-            ("bk.o", "fr.i"): ".fr.t",
-            ("fr.o", "bk.i"): ".bk.t",
-            ("fr.o", "fr.i"): ".fr.r",
-            ("bk.o", "bk.i"): ".bk.r",
-        })
-        self.edges.update({
-            # ("fr.a", "fr.i"): "1a",
-            # ("fr.F", "fr.a"): ".fr.Fq",
-            ("fr.F", "fr.i"): ".fr.Fq",  # q quadrature (amplitude) field to force
-            ("pos", "fr.F"): ".fr.chi",  # mechanical susceptibility
-            # ("fr.o", "pos"): ".fr.px",   # position to p quadrature (phase) field
-            ("fr.v", "pos"): ".fr.px",
-            ("fr.o", "fr.v"): "1v",
-
-            # ("fr.a", "fr.i"): ".1a",
-            # ("fr.F", "fr.a"): ".fr.Fq",  # q quadrature (amplitude) field to force
-            # ("pos", "fr.F"): ".fr.chi",  # mechanical susceptibility
-            # ("fr.v", "pos"): ".fr.px",   # position to p quadrature (phase) field
-            # ("fr.o", "fr.v"): ".1v",
-        })
-        self.edges.update({
-            ("pos.tp", "pos"): "1s",
-            ("pos", "pos.exc"): "1s",
-            ("fr.F", "fr.F.exc"): "1a",
-        })
-
-        #     "fr.F": (0, 3),
-        #     "pos":  (0, 0),
-
-        #     "pos.exc": (+9, 0),
-        #     "pos.tp":  (-9, 0),
-        #     "fr.F.exc": (+3, +11),
-        # })
-        # self.edges.update({
-        #     ("bk.o", "fr.i"): ".fr.t",
-        #     ("fr.o", "bk.i"): ".bk.t",
-        #     ("fr.o", "fr.i"): ".fr.r",
-        #     ("bk.o", "bk.i"): ".bk.r",
-
-        #     ("fr.F", "fr.i"): ".fr.Fq",  # q quadrature (amplitude) field to force
-        #     ("pos", "fr.F"): ".fr.chi",  # mechanical susceptibility
-        #     ("fr.o", "pos"): ".fr.px",   # position to p quadrature (phase) field
-
-        #     ("pos.tp", "pos"): "1s",
-        #     ("pos", "pos.exc"): "1s",
-        #     ("fr.F", "fr.F.exc"): "1a",
-        # })
-
-    def properties(self, nodes, edges, rot_deg, **kwargs):
-        nodes["fr.F"]['angle'] = +45
-        nodes["fr.i"]['angle'] = +135
-        nodes["fr.o"]['angle'] = -135
-        nodes["pos.tp"]['angle'] = -135
-        edges[("fr.F", "fr.i")]['handed'] = 'l'
-        super().properties(
-            nodes=nodes,
-            edges=edges,
-            rot_deg=rot_deg,
-            **kwargs,
-        )
-
-
-class SimpleMirror(optics.GraphElement):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.locations.update({
-            "fr.i": (-6, +8),
-            "fr.o": (-6, -8),
-            "pos": (0, 0),
-            "fr.F": (0, 5),
-        })
-        # self.locations.update({
-        #     "fr.a": (-4, +6),
-        #     "fr.v": (-4, -6),
-        # })
-        self.locations.update({
-            "Fr.i.exc": (-12, +8),
-            "fr.o.exc": (-5, -11),
-            "fr.i.tp": (-5, +11),
-            "fr.o.tp": (-12, -8),
-            "fr.F.exc": (3, +13),
-            "pos.tp": (-12, 0),
-            "pos.exc": (7, 0),
-        })
-        self.edges.update({
-            ("fr.o", "fr.i"): ".fr.r",
-            ("fr.F", "fr.i"): ".fr.Fq",
-            ("pos", "fr.F"): ".fr.chi",
-            ("fr.o", "pos"): ".fr.px",
-        })
-        # self.edges.update({
-        #     ("fr.o", "fr.i"): ".fr.r",
-        #     ("fr.a", "fr.i"): '1a',
-        #     ("fr.F", "fr.a"): ".fr.Fq",
-        #     ("pos", "fr.F"): ".fr.chi",
-        #     ("fr.v", "pos"): ".fr.px",
-        #     ("fr.o", "fr.v"): "1v",
-        # })
-        self.edges.update({
-            ("fr.i", "fr.i.exc"): "1",
-            ("fr.i.tp", "fr.i"): "1",
-            ("fr.o.tp", "fr.o"): "1",
-            ("fr.o", "fr.o.exc"): "1",
-
-            ("fr.F", "fr.F.exc"): "1a",
-            ("pos", "pos.exc"): "1s",
-            ("pos.tp", "pos"): "1s",
-        })
-
-    def properties(self, nodes, edges, rot_deg, **kwargs):
-        nodes["fr.F"]['angle'] = +45
-        nodes["fr.i"]['angle'] = +135
-        nodes["fr.o.tp"]['angle'] = +135
-        nodes["fr.i.exc"]['angle'] = -135
-
-
-class SimpleMirrorEdge:
-    def __init__(self,
-                 name,
-                 Rhr=1,
-                 lambda_m=1064e-9,
-                 mlib=mats_planewave,
-    ):
-        self.name = name
-        self.r = np.sqrt(Rhr)
-        self.lambda_m = lambda_m
-        self.mlib = mlib
-
-    def _edges(self, r):
-        edge_map = {
-            self.name + '.fr.r': -r,
-        }
-        return edge_map
-
-    def edgesDC(self):
-        edge_map = self._edges(self.mlib.diag(self.r))
-        edge_map[self.name + '.fr.Fq'] = np.zeros_like(self.mlib.Id_a)
-        edge_map[self.name + '.fr.chi'] = np.zeros_like(self.mlib.Id_s)
-        edge_map[self.name + '.fr.px'] = np.zeros_like(self.mlib.Id_v)
-        return edge_map
-
-    def edgesAC(self, F_Hz, resultsDC):
-        npts = len(F_Hz)
-        edge_map = self._edges(self.mlib.diag(self.r))
-        fieldsDC = resultsDC[self.name + '.fr.i.tp']
-        # q (amplitude) quadrature to force [N/rtW]
-        Fq = 4/scc.c * adjoint(fieldsDC)
-        Fq = np.repeat(Fq[np.newaxis, :, :], npts, axis=0)
-        edge_map[self.name + '.fr.Fq'] = Fq
-        # mechanical susceptibility [m/N]
-        edge_map[self.name + '.fr.chi'] = np.ones((len(F_Hz), 1, 1))
-        # displacement to p (phase) quadrature [rtW/m]
-        px = 4*np.pi/self.lambda_m * self.mlib.Mrotation(np.pi/2) @ fieldsDC
-        px = np.repeat(px[np.newaxis, :, :], npts, axis=0)
-        edge_map[self.name + '.fr.px'] = px
-        return edge_map
-
-
 class HRMirrorRPReduced(optics.GraphElement):
+    """
+    GraphElement representing only the HR surface of a mirror but including
+    radiation pressure effects. Gaussian elimination is done manually for the
+    radiation pressure loop
+    """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.locations.update({
@@ -384,6 +155,11 @@ class HRMirrorRPReduced(optics.GraphElement):
 
 
 class HRMirrorRPReducedEdge:
+    """
+    Defines DC and AC edges for an HRMirrorRPReduced element representing only the
+    HR surface of a mirror but including radiation pressure effects. Gaussian elimination
+    is done manually for the radiation pressure loop.
+    """
     def __init__(
             self,
             name,
@@ -406,19 +182,30 @@ class HRMirrorRPReducedEdge:
         return edge_map
 
     def edgesDC(self):
+        """
+        Returns the DC edge map dictionary
+        """
         edge_map = self._optic_edges(self.mlib.diag(self.r))
-        zz = np.zeros_like(self.mlib.Id)
+        # no radiation pressure at DC, and the matrix dimensions are correct
+        zz = {k: np.zeros_like(self.mlib[k]) for k in self.mlib.keys() if 'Id' in k}
         edge_map.update({
-            self.name + '.fr.xq': zz,
-            self.name + '.fr.px': zz,
-            self.name + '.xx': zz,
-            self.name + '.fr.pF': zz,
-            self.name + '.fr.xF': zz,
+            self.name + '.fr.xq': zz['Id_a'],
+            self.name + '.fr.px': zz['Id_v'],
+            self.name + '.xx': self.mlib['Id_s'],
+            self.name + '.fr.pF': zz['Id'],
+            self.name + '.fr.xF': zz['Id_a'],
         })
         return edge_map
 
     def edgesAC(self, F_Hz, resultsDC):
+        """
+        Returns the AC edge map dictionary
+
+        F_Hz: Frequency vector at which to evaluate the edge map
+        resultsDC: the dictionary of DC results
+        """
         edge_map = {}
+        # DC fields at the front of the mirror
         fieldsDC_i = resultsDC[self.name + '.fr.i.tp']
         fieldsDC_o = resultsDC[self.name + '.fr.o.tp']
         # displacement to p (phase) quadrature [rtW/m]
@@ -444,3 +231,62 @@ class HRMirrorRPReducedEdge:
         }
         edge_map = {self.name + '.' + k: v for k, v in edge_map.items()}
         return edge_map
+
+
+class HRMirrorRP(optics.GraphElement):
+    """
+    GraphElement representing only the HR surface of a mirror but including
+    radiation pressure effects in the full graph without any manual reduction
+
+    extra_tp: If true add test points for position and force (Default: True)
+    """
+    def __init__(self, extra_tp=True, **kwargs):
+        super().__init__(**kwargs)
+        self.locations.update({
+            'fr.i': (-4, +5),
+            'fr.o': (-4, -5),
+            'fr.F.i': (5, +4),
+            'fr.F.o': (5, -4),
+            'pos': (5, 0),
+            'fr.i.tp': (-1, +8),
+            'fr.o.tp': (-1, -8),
+        })
+
+        self.edges.update({
+            ('fr.o', 'fr.i'): '.fr.r',
+            ('fr.F.i', 'fr.i'): '.fr.Fq.i',
+            ('fr.F.o', 'fr.o'): '.fr.Fq.o',
+            ('fr.o', 'pos'): '.px',
+            ('pos', 'fr.F.i'): '.chi',
+            ('pos', 'fr.F.o'): '.chi',
+            ('fr.i.tp', 'fr.i'): '1',
+            ('fr.o.tp', 'fr.o'): '1',
+        })
+
+        self.extra_tp = extra_tp
+        if extra_tp:
+            self.locations.update({
+                'pos.exc': (+11, -2),
+                'pos.tp': (+11, +2),
+                'fr.F.i.exc': (+7, +8),
+            })
+
+            self.edges.update({
+                ('pos.tp', 'pos'): '1s',
+                ('pos', 'pos.exc'): '1s',
+                ('fr.F.i', 'fr.F.i.exc'): '1a',
+            })
+
+    def properties(self, nodes, edges, rot_deg, **kwargs):
+        nodes["fr.o"]['angle'] = +135
+        nodes['fr.i']['angle'] = +135
+        nodes['fr.F.i']['angle'] = -45
+        nodes['pos']['angle'] = 150
+        edges[('fr.o', 'pos')]['handed'] = 'r'
+        edges[('pos', 'fr.F.o')]['handed'] = 'r'
+        edges[('fr.F.o', 'fr.o')]['handed'] = 'r'
+        edges[('fr.F.i', 'fr.i')]['handed'] = 'l'
+        edges[('pos', 'fr.F.i')]['handed'] = 'r'
+        if self.extra_tp:
+            edges[('pos.tp', 'pos')]['handed'] = 'r'
+            edges[('pos', 'pos.exc')]['handed'] = 'r'
