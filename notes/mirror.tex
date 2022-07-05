@@ -1,0 +1,160 @@
+% \documentclass[12pt]{article}
+\documentclass[
+  reprint,
+  12pt,
+  onecolumn,
+  nofootinbib,
+]{revtex4-2}
+\usepackage{fullpage}
+
+\usepackage{amsmath,amssymb,amsfonts}
+
+\usepackage[english]{babel}
+\usepackage[bbgreekl]{mathbbol}
+\usepackage{amsfonts}
+\usepackage{bm}
+\usepackage{mathtools}
+\usepackage{graphicx}
+
+\usepackage[
+  usenames,
+  dvipsnames,
+  svgnames,
+  table
+]{xcolor}
+\usepackage[
+  colorlinks=true,
+  citecolor=NavyBlue,
+  linkcolor=NavyBlue,
+  urlcolor=PaleGreen4
+]{hyperref}
+\usepackage[capitalise]{cleveref}
+
+\DeclareSymbolFontAlphabet{\mathbb}{AMSb}
+\DeclareSymbolFontAlphabet{\mathbbl}{bbold}
+
+%% \newcommand{\Tmat}[1]{\ensuremath{\mathbbl{#1}}}
+%% \newcommand{\Tvec}[1]{\overset{\raisebox{-2pt}{\text{\tiny$\bm\rightarrow$}}}{\mathbbl{#1}}}
+\newcommand{\Marrow}[1]{\overset{\text{\tiny$\bm\leftrightarrow$}}{#1}}
+\newcommand{\mat}[1]{\ensuremath{\mathbf{#1}}}
+\newcommand{\Tmat}[1]{\ensuremath{\mathbbl{#1}}}
+\newcommand{\Tvec}[1]{\overset{\raisebox{-2pt}{\text{\tiny$\bm\rightarrow$}}}{\mathbbl{#1}}}
+\newcommand{\Marrowbbl}[1]{\overset{\raisebox{-1pt}{\text{\tiny$\bm\Leftrightarrow$}}}{#1}}
+\newcommand{\Dmat}[1]{\ensuremath{\Marrowbbl{\mathbf{#1}}}}
+\newcommand{\Mrarrowbbl}[1]{\overset{\raisebox{-1pt}{\text{\tiny$\bm\Rightarrow$}}}{#1}}
+\newcommand{\Dvec}[1]{\ensuremath{\Mrarrowbbl{\mathbf{#1}}}}
+
+
+\newcommand{\rme}{\mathrm{e}}
+\newcommand{\rmi}{\mathrm{i}}
+\newcommand{\rmd}{\mathrm{d}}
+
+\newcommand{\ti}{\text{i}}
+\newcommand{\ta}{\text{a}}
+\newcommand{\te}{\text{e}}
+\newcommand{\ts}{\text{s}}
+\newcommand{\tF}{\text{f}}
+\newcommand{\tH}{\text{h}}
+
+\newcommand{\pha}{\Omega L_\ta/c}
+\newcommand{\phs}{\Omega L_\ts/c}
+\newcommand{\rsp}{\mathfrak{r}_{\ts+}}
+\newcommand{\rsm}{\mathfrak{r}_{\ts-}}
+\newcommand{\rso}{\mathfrak{r}_{\ts0+}}
+\newcommand{\drp}{\mathfrak{\delta r}_{\ts+}}
+\newcommand{\drm}{\mathfrak{\delta r}_{\ts-}}
+
+\DeclareMathOperator{\re}{Re}
+\DeclareMathOperator{\im}{Im}
+
+\graphicspath{{../models/tresults}}
+
+\begin{document}
+
+Using the following sign conventions
+\begin{itemize}
+\item Fourier transforms are
+  $a(\omega) = \int \rmd t\, \rme^{-\rmi\omega t} a(t)$
+  so that propagation in time is a phase delay $\rme^{-\rmi\omega t}$.
+\item Increasing a propagation length by a distance $x$ corresponds to a negative phase rotation $\Tmat{R}(-kx)$.
+\item Reflection from the front (HR) surface of an optic is $-r$, reflection from the back (AR) surface of an optic is $+r$, and transmission is $+t$.
+\item Positive motion of an optic perpendicular to its face corresponds to the front (HR) surface moving forward away from the optic, i.e.\ pushing on the back of a mirror produces a positive motion and radiation pressure incident on the front of a mirror produces a force in the negative direction.
+\end{itemize}
+
+\section{Phase modulation by moving mirror}
+
+Let $\Tvec{A}_{\text{fi}}, \Tvec{A}_{\text{fo}}, \Tvec{A}_{\text{bi}}$, and $\Tvec{A}_{\text{bo}}$ be the fields incident on the front, reflected from the front, incident on the back, and reflected from the back respectively. Further let $\Tvec{A}_{0\alpha}$ be the DC part of the field $\alpha$ and $\Tvec{a}_\alpha$ be the AC part so that $\Tvec{A} = \Tvec{A}_{0\alpha} + \Tvec{a}_\alpha$. Now suppose the optic is moved a distance $x$ in the positive direction. This corresponds to a roundtrip shortening of the distance between a source and the front of the mirror by $2x$ and a roundtrip increase of the distance between a source and the back surface of the mirror by $2x$. The fields are thus
+\begin{subequations}
+\begin{align}
+  \Tvec{A}_\text{fo} &= -r \Tmat{R}(+2kx) \Tvec{A}_\text{fi} + t\Tvec{A}_\text{bi} \\
+  \Tvec{A}_\text{bo} &= t\Tvec{A}_\text{fi} + r\Tmat{R}(-2kx) \Tvec{A}_\text{bi}.
+\end{align}
+\end{subequations}
+Noting that $\Tmat{R}(\theta) = \Tmat{1} + \Tmat{R}(\pi/2)\theta + O(\theta^2)$, the AC part is
+\begin{subequations}
+\begin{align}
+  \Tvec{a}_\text{fo} &= - \frac{4\pi r}{\lambda} \Tmat{R}(\pi/2) \Tvec{A}_\text{0fi}\, x \\
+  \Tvec{a}_\text{bo} &= - \frac{4\pi r}{\lambda} \Tmat{R}(\pi/2) \Tvec{A}_\text{0bi}\, x.
+\end{align}
+\end{subequations}
+Note that the signs are the same.
+
+\section{Radiation pressure on the front of a mirror}
+
+The radiation pressure force is $F_\text{rp} = (P_\text{bi} + P_\text{bo} - P_\text{fi} - P_\text{fo}) / c$ where $P_\alpha = \Tvec{A}_\alpha^\dag \Tvec{A}_\alpha$ is the power of field $\alpha$. First consider for simplicity a laser incident only on the front of a mirror as shown in \cref{fig:HRMirrorRP_graph}. Since the AC contribution is $2\Tvec{A}_{0\alpha}^\dag \Tvec{a}_\alpha$, the AC parts are
+\begin{subequations}
+  \label{eq:HRMirrorRP}
+\begin{align}
+  fr.Fq.i &\equiv \Tvec{f}_\text{i}^\dag = - \frac{2}{c} \Tvec{A}_\text{0fi}^\dag \\
+  fr.Fq.o &\equiv \Tvec{f}_\text{o}^\dag = - \frac{2}{c} \Tvec{A}_\text{0fo}^\dag \\
+  fr.px &\equiv \Tvec{x} = - \frac{4\pi r}{\lambda} \Tmat{R}(\pi/2) \Tvec{A}_\text{0fi} \\
+  EX.chi &= \chi
+\end{align}
+\end{subequations}
+The conversion of force to mirror motion is just multiplication by the mechanical susceptibility $\chi$. An attempt to implement this made in \texttt{test\_sflu\_HRMirrorRP} in test\_optical\_spring.py.
+
+\begin{figure}
+  \centering
+  \includegraphics[scale=0.9]{plot_HRMirrorRP_graph/HRMirrorRP_graph.pdf}
+  \caption{Graph of a Fabry-Perot cavity using an ETM with only an HR surface. The graph edges are given in \cref{eq:HRMirrorRP}. Produced by \texttt{plot\_HRMirrorRPReduced\_graph} in test\_optical\_spring.py.}
+  \label{fig:HRMirrorRP_graph}
+\end{figure}
+
+
+Radiation pressure forms a loop and the Gaussian elimination can done by hand as shown in \cref{fig:HRMirrorRPReduced} with the result
+\begin{subequations}
+\label{eq:HRMirrorRPReduced}
+\begin{align}
+  \Tmat{F} &= \left(\Tmat{1} - \Tvec{x}\chi\Tvec{f}_\text{i}^\dag\right)^{-1} \\
+  fr.r &= \Tmat{F}\left(-r\Tmat{1} + \Tvec{x}\chi\Tvec{f}_\text{i}^\dag\right) \\
+  fr.xq &=
+  \chi \left[\Tvec{f}_\text{i}^\dag + \Tvec{f}_\text{o}^\dag\Tmat{F}
+    \left(-r\Tmat{1} + \Tvec{x}\chi\Tvec{f}_\text{i}^\dag\right)\right] \\
+  fr.xF &= \left(\Tmat{1} + \chi \Tmat{f}_\text{o}^\dag \Tmat{F} \Tvec{x}\right) \chi \\
+  fr.px &= \Tmat{F}\Tvec{x} \\
+  fr.pF &= \Tmat{F}\Tvec{x}\chi \\
+  fr.xx &= \Tmat{1} + \chi \Tvec{f}_\text{o}^\dag \Tmat{F}\Tvec{x}.
+\end{align}
+\end{subequations}
+This is successfully implemented for an optical spring demonstrating both the optical and mechanical effects of radiation pressure; a comparison with Optickle is shown in \cref{fig:optickle_compare}.
+
+\begin{figure}
+  \centering
+  \includegraphics[scale=0.9]{plot_HRMirrorRPReduced_graph/HRMirrorRPReduced_graph.pdf}
+  \caption{Graph of a Fabry-Perot cavity using an ETM with only an HR surface, as in \cref{fig:HRMirrorRP_graph}, but where the Gaussian elimination of the radiation pressure loop has already been done. The graph edges are given in \cref{eq:HRMirrorRPReduced}. Produced by \texttt{plot\_HRMirrorRPReduced\_graph} in test\_optical\_spring.py.}
+  \label{fig:HRMirrorRPReduced}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.45\paperwidth]{test_HRMirrorRPReduced_compare_optickle/optical_tf.pdf}
+  \includegraphics[width=0.45\paperwidth]{test_HRMirrorRPReduced_compare_optickle/mechanical_tf.pdf}
+  \caption{Comparison of SFLU model of an optical spring given in \cref{eq:HRMirrorRPReduced} and \cref{fig:HRMirrorRPReduced} with an Optickle model of the same setup. Produced by \texttt{test\_HRMirrorRPReduced\_compare\_optickle} in test\_optical\_spring.py. (Same plots not requiring Optickle are made by \texttt{test\_sflu\_HRMirrorRPReduced}).}
+  \label{fig:optickle_compare}
+\end{figure}
+
+\section{Radiation pressure on both sides of a mirror}
+
+This is similar to above except there are now two radiation pressure loops which are more annoying to reduce by hand.
+
+\end{document}
