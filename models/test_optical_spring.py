@@ -10,7 +10,7 @@ mirror definition. These are the HRMirrorRPReduced models.
 the HRMirrorRP models.
 """
 import numpy as np
-from wavestate.control.SFLU import SFLU, optics, nx2tikz
+from wavestate.control.SFLU import SFLU, optics, nx2tikz, SFLUcompute
 import components as cmp
 from gwinc.struct import Struct
 from gwinc.noise.quantum_lib import adjoint, Vnorm_sq
@@ -121,6 +121,8 @@ def sflu_HRMirrorRPReduced_results(sflu_HRMirrorRPReduced, pprint):
     edgesDC.update(IX.edgesDC())
     edgesDC.update(ArmLink.edgesDC())
 
+    pprint('\nDC')
+
     compDC = sflu.computer(eye=mlib.Id)
     compDC.compute(edge_map=edgesDC)
     resultsDC = compDC.inverse_col(
@@ -130,8 +132,8 @@ def sflu_HRMirrorRPReduced_results(sflu_HRMirrorRPReduced, pprint):
         },
         {'IX.bk.i.exc': np.sqrt(params.Pin_W) * mlib.LO(np.pi/2)}
     )
-    pprint(resultsDC['EX.fr.i.tp'])
-    pprint(resultsDC['EX.fr.o.tp'])
+    # pprint(resultsDC['EX.fr.i.tp'])
+    # pprint(resultsDC['EX.fr.o.tp'])
 
     ##################################################
     # AC calculation
@@ -140,6 +142,8 @@ def sflu_HRMirrorRPReduced_results(sflu_HRMirrorRPReduced, pprint):
     edgesAC.update(EX.edgesAC(F_Hz, resultsDC))
     edgesAC.update(IX.edgesAC(F_Hz, resultsDC))
     edgesAC.update(ArmLink.edgesAC(F_Hz))
+
+    pprint('\nAC')
 
     compAC = sflu.computer(eye=mlib.Id)
     compAC.compute(edge_map=edgesAC)
@@ -152,9 +156,9 @@ def sflu_HRMirrorRPReduced_results(sflu_HRMirrorRPReduced, pprint):
         {'EX.fr.F.i.exc'},
         # {'EX.pos.exc'},
     )
-    pprint(resultsAC_opt['EX.pos.exc'].shape)
-    pprint(resultsAC_mech['EX.fr.F.i.exc'].shape)
-    # pprint(resultsAC_mech['EX.pos.exc'].shape)
+    # pprint(resultsAC_opt['EX.pos.exc'].shape)
+    # pprint(resultsAC_mech['EX.fr.F.i.exc'].shape)
+    # # pprint(resultsAC_mech['EX.pos.exc'].shape)
 
     return resultsDC, resultsAC_opt, resultsAC_mech
 
@@ -335,17 +339,10 @@ def test_sflu_HRMirrorRP(sflu_HRMirrorRP, tpath_join, pprint, plotTF):
 
     edgesDC['EX.fr.r'] = mlib.diag(-1)
     # no radiation pressure at DC
-    edgesDC['EX.px'] = mlib.diag(0)
-    edgesDC['EX.fr.Fq.i'] = mlib.diag(0)
-    edgesDC['EX.fr.Fq.o'] = mlib.diag(0)
-    edgesDC['EX.chi'] = mlib.diag(0)
-
-    # strictly speaking, these should be the correct dimensions but lead to the same
-    # matrix dimension errors as the AC graph below
-    # edgesDC['EX.px'] = np.zeros((2, 1))
-    # edgesDC['EX.fr.Fq.i'] = np.zeros((1, 2))
-    # edgesDC['EX.fr.Fq.o'] = np.zeros((1, 2))
-    # edgesDC['EX.chi'] = np.zeros((1, 1))
+    edgesDC['EX.px'] = np.zeros((2, 1))
+    edgesDC['EX.fr.Fq.i'] = np.zeros((1, 2))
+    edgesDC['EX.fr.Fq.o'] = np.zeros((1, 2))
+    edgesDC['EX.chi'] = np.zeros((1, 1))
 
     compDC = sflu.computer(eye=mlib.Id)
     compDC.compute(edge_map=edgesDC)
@@ -356,8 +353,6 @@ def test_sflu_HRMirrorRP(sflu_HRMirrorRP, tpath_join, pprint, plotTF):
         },
         {'IX.bk.i.exc': np.sqrt(params.Pin_W) * mlib.LO(np.pi/2)},
     )
-    pprint(resultsDC['EX.fr.i.tp'])
-    pprint(resultsDC['EX.fr.o.tp'])
 
     ##################################################
     # AC calculation
@@ -373,18 +368,14 @@ def test_sflu_HRMirrorRP(sflu_HRMirrorRP, tpath_join, pprint, plotTF):
 
     # displacement to p (phase) quadrature
     px = -4*np.pi/params.lambda_m * mlib.Mrotation(np.pi/2) @ fieldsDC_i
-    pprint('px', px.shape)
 
     # q (amplitude) quadrature to force
     Fq_i = -2/scc.c * adjoint(fieldsDC_i)
     Fq_o = -2/scc.c * adjoint(fieldsDC_o)
-    pprint('Fq_i', Fq_i.shape)
-    pprint('Fq_o', Fq_o.shape)
 
     # mechanical susceptibility
     chi = -1/(params.M_kg * (2*np.pi*F_Hz)**2)
     chi = chi.reshape((len(F_Hz), 1, 1))
-    pprint('chi', chi.shape)
 
     edgesAC['EX.fr.r'] = mlib.diag(-1)
     edgesAC['EX.px'] = px
@@ -392,44 +383,42 @@ def test_sflu_HRMirrorRP(sflu_HRMirrorRP, tpath_join, pprint, plotTF):
     edgesAC['EX.fr.Fq.o'] = Fq_o
     edgesAC['EX.chi'] = chi
 
-    # check dimensions of some propagators; everything looks OK
-    rt = px @ chi @ Fq_o
-    cl = mlib.Minv(mlib.Id - rt)
-    fr_r = mlib.diag(-1) + px @ chi @ Fq_i
-    pprint('round trip', rt.shape)
-    pprint('closed loop', cl.shape)
-    pprint('front reflection', fr_r.shape)
-
     compAC = sflu.computer(eye=mlib.Id)
     compAC.compute(edge_map=edgesAC)
-    resultsAC = compAC.inverse_row(
+    resultsAC_opt = compAC.inverse_row(
         {'IX.bk.o.tp': None},
-        {
-            # 'EX.fr.o.exc',
-            'EX.pos.exc',
-        },
+        {'EX.pos.exc'},
     )
-    pprint(resultsAC['EX.pos.exc'].shape)
+    resultsAC_mech = compAC.inverse_row(
+        {'EX.pos.tp': None},
+        {'EX.fr.F.i.exc'},
+    )
 
-    # LOa = np.sqrt(params.Plo_W) * adjoint(mlib.LO(0))
-    # tf = LOa @ resultsAC['EX.fr.o.exc'] @ px
-    # pprint('tf', tf.shape)
-    # tf = tf[..., 0, 0]
+    LOa = np.sqrt(params.Plo_W) * adjoint(mlib.LO(0))
+    opt_tf = LOa @ resultsAC_opt['EX.pos.exc']
+    opt_tf = opt_tf[..., 0, 0]
+    mech_tf = resultsAC_mech['EX.fr.F.i.exc']
+    mech_tf = mech_tf[..., 0, 0]
 
-    # tf2 = LOa @ resultsAC['EX.pos.exc']
-    # pprint('tf2', tf2.shape)
-    # tf2 = tf2[..., 0, 0]
+    fig = plotTF(F_Hz, opt_tf, label='SFLU')
+    fig.axes[0].legend()
+    fig.axes[0].set_title('Phase response to mirror motion')
+    fig.axes[0].set_ylabel('Magnitude [W/m]')
+    fig.savefig(tpath_join('optical_tf.pdf'))
 
-    # fig = plotTF(F_Hz, tf)
-    # plotTF(F_Hz, tf2, *fig.axes, ls='--')
-    # fig.axes[0].set_ylabel('Magnitude [W/m]')
-    # fig.savefig(tpath_join('tf.pdf'))
+    fig = plotTF(F_Hz, mech_tf, label='SFLU')
+    fig.axes[0].set_title('Radiation pressure modified mechanical susceptibility')
+    fig.axes[0].legend()
+    fig.axes[0].set_ylabel('Magnitude [m/N]')
+    fig.savefig(tpath_join('mechanical_tf.pdf'))
 
 
 ################################################################################
 
 def plot_HRMirrorRPReduced_graph(sflu_HRMirrorRPReduced, tpath_join):
     sflu = sflu_HRMirrorRPReduced
+    with open(tpath_join('opcodes.yaml'), 'w') as fh:
+        fh.write(sflu.convert_self2yamlstr())
     G1 = sflu.G.copy()
     sflu.graph_reduce_auto_pos(lX=-12, rX=+12, Y=0, dY=-5)
     sflu.reduce(*reduce_list_HRMirrorRPReduced)
@@ -445,6 +434,8 @@ def plot_HRMirrorRPReduced_graph(sflu_HRMirrorRPReduced, tpath_join):
 
 def plot_HRMirrorRP_graph(sflu_HRMirrorRP, tpath_join):
     sflu = sflu_HRMirrorRP
+    with open(tpath_join('opcodes.yaml'), 'w') as fh:
+        fh.write(sflu.convert_self2yamlstr())
     G1 = sflu.G.copy()
     sflu.graph_reduce_auto_pos(lX=-12, rX=+12, Y=0, dY=-5)
     sflu.reduce(*reduce_list_HRMirrorRP)
@@ -456,6 +447,28 @@ def plot_HRMirrorRP_graph(sflu_HRMirrorRP, tpath_join):
         fname = tpath_join('testG.pdf'),
         scale='10pt',
     )
+
+
+def test_load_save_HRMirrorRPReduced(sflu_HRMirrorRPReduced, tpath_join):
+    sflu = sflu_HRMirrorRPReduced
+    with open(tpath_join('graph.yaml'), 'w') as fh:
+        fh.write(sflu.convert_self2yamlstr())
+    # can't reduce before saving graph, otherwise load won't work
+    # but need to reduce to get the oplist
+    sflu.reduce_auto()
+    comp = sflu.computer()
+    with open(tpath_join('opcode.yaml'), 'w') as fh:
+        fh.write(comp.convert_oplistE2yamlstr())
+
+    with open(tpath_join('graph.yaml'), 'r') as fh:
+        ystr = fh.read()
+    sflu2 = SFLU.SFLU.convert_yamlstr2self(ystr)
+    with open(tpath_join('opcode.yaml'), 'r') as fh:
+        ystr = fh.read()
+    oplistE = SFLUcompute.SFLUCompute.convert_yamlstr2oplistE(ystr)
+    sflu2.reduce_auto()
+    comp2 = sflu2.computer()
+    assert(sorted(comp2.oplistE) == sorted(oplistE))
 
 
 ################################################################################
