@@ -39,15 +39,6 @@ params = Struct(
 # Manual Gaussian elimination
 ################################################################################
 
-reduce_list_HRMirrorRPReduced = [
-    'EX.fr.i',
-    'IX.fr.i',
-    'EX.fr.o',
-    'IX.fr.o',
-    'IX.bk.i',
-    'IX.bk.o',
-]
-
 
 @pytest.fixture
 def sflu_HRMirrorRPReduced():
@@ -86,7 +77,6 @@ def sflu_HRMirrorRPReduced():
 
     sflu = SFLU.SFLU(
         edges=ifo.build_edges(),
-        reduce_list=reduce_list_HRMirrorRPReduced,
         graph=True,
     )
     ifo.update_sflu(sflu)
@@ -103,7 +93,7 @@ def sflu_HRMirrorRPReduced_results(sflu_HRMirrorRPReduced, pprint):
     be used in SFLU only tests not needing Optickle or qlance to be installed
     """
     sflu = sflu_HRMirrorRPReduced
-    sflu.reduce(*reduce_list_HRMirrorRPReduced)
+    sflu.reduce_auto()
 
     EX = cmp.HRMirrorRPReducedEdge('EX', Thr=0, M_kg=params.M_kg)
     IX = cmp.MirrorEdge('IX', Thr=params.Ti)
@@ -227,19 +217,6 @@ def test_HRMirrorRPReduced_compare_optickle(
 ################################################################################
 
 
-reduce_list_HRMirrorRP = [
-    'EX.fr.o',
-    'IX.fr.i',
-    'IX.fr.o',
-    'EX.fr.i',
-    'IX.bk.i',
-    'IX.bk.o',
-    'EX.pos',
-    'EX.fr.F.i',
-    'EX.fr.F.o',
-]
-
-
 @pytest.fixture
 def sflu_HRMirrorRP():
     """
@@ -257,6 +234,15 @@ def sflu_HRMirrorRP():
         translation_xy=(-10, 0),
         rotation_deg=180,
     )
+    ifo.subgraph_add(
+        'EX', cmp.HRMirrorRP(),
+        translation_xy=(+10, 0),
+        rotation_deg=0,
+    )
+    ifo.edges.update({
+        ("EX.fr.i", "IX.fr.o"): 'tau',
+        ("IX.fr.i", "EX.fr.o"): 'tau',
+    })
     ifo.locations.update({
         'IX.bk.i.exc': (-20, +5),
         'IX.bk.o.tp': (-20, -5),
@@ -268,32 +254,8 @@ def sflu_HRMirrorRP():
 
     ifo.node_angle['IX.bk.o.tp'] = +45
 
-    ############################################################
-    # RP mirror: EX
-    ############################################################
-
-    # set extra_tp=False to remove the fr.F.i.exc, pos.tp, and pos.exc
-    # test points for debugging, though this doesn't seem to change the issue
-    ifo.subgraph_add(
-        'EX', cmp.HRMirrorRP(extra_tp=True),
-        translation_xy=(+10, 0),
-        rotation_deg=0,
-    )
-
-    ############################################################
-    # cavity
-    ############################################################
-    ifo.edges.update({
-        ("EX.fr.i", "IX.fr.o"): 'tau',
-        ("IX.fr.i", "EX.fr.o"): 'tau',
-    })
-
-    ############################################################
-    # building
-    ############################################################
     sflu = SFLU.SFLU(
         edges=ifo.build_edges(),
-        reduce_list=reduce_list_HRMirrorRP,
         graph=True,
     )
     ifo.update_sflu(sflu)
@@ -305,15 +267,10 @@ def test_sflu_HRMirrorRP(sflu_HRMirrorRP, tpath_join, pprint, plotTF):
     Solve the SFLU model defined in sflu_HRMirrorRP
     """
     sflu = sflu_HRMirrorRP
-    sflu.reduce(*reduce_list_HRMirrorRP)
-
-    npts = len(F_Hz)
-
-    chi = -1/(params.M_kg * (2*np.pi*F_Hz)**2)
-    chi = chi.reshape((npts, 1, 1))
+    sflu.reduce_auto()
 
     IX = cmp.MirrorEdge('IX', Thr=params.Ti)
-    # EX = cmp.MirrorEdge('EX', Thr=0)
+    EX = cmp.HRMirrorRPEdge('EX', Thr=0, M_kg=params.M_kg)
     ArmLink = cmp.LinkEdge(
         'tau', L_m=params.Larm_m,
         detune_rad=params.detune_rad,
@@ -326,7 +283,6 @@ def test_sflu_HRMirrorRP(sflu_HRMirrorRP, tpath_join, pprint, plotTF):
         '1v': mlib.Id_v,  # 2x1 vector identity
         '1a': mlib.Id_a,  # 1x2 adjoint identity
     }
-    Zz = {k: np.zeros_like(mlib[k]) for k in mlib.keys() if 'Id' in k}
 
     ##################################################
     # DC calculation
@@ -334,15 +290,8 @@ def test_sflu_HRMirrorRP(sflu_HRMirrorRP, tpath_join, pprint, plotTF):
 
     edgesDC = deepcopy(Id)
     edgesDC.update(IX.edgesDC())
-    # edgesDC.update(EX.edgesDC())
+    edgesDC.update(EX.edgesDC())
     edgesDC.update(ArmLink.edgesDC())
-
-    edgesDC['EX.fr.r'] = mlib.diag(-1)
-    # no radiation pressure at DC
-    edgesDC['EX.px'] = np.zeros((2, 1))
-    edgesDC['EX.fr.Fq.i'] = np.zeros((1, 2))
-    edgesDC['EX.fr.Fq.o'] = np.zeros((1, 2))
-    edgesDC['EX.chi'] = np.zeros((1, 1))
 
     compDC = sflu.computer(eye=mlib.Id)
     compDC.compute(edge_map=edgesDC)
@@ -360,28 +309,8 @@ def test_sflu_HRMirrorRP(sflu_HRMirrorRP, tpath_join, pprint, plotTF):
 
     edgesAC = deepcopy(Id)
     edgesAC.update(IX.edgesAC(F_Hz, resultsDC))
-    # edgesAC.update(EX.edgesAC(F_Hz, resultsDC))
+    edgesAC.update(EX.edgesAC(F_Hz, resultsDC))
     edgesAC.update(ArmLink.edgesAC(F_Hz))
-
-    fieldsDC_i = resultsDC['EX.fr.i.tp']
-    fieldsDC_o = resultsDC['EX.fr.o.tp']
-
-    # displacement to p (phase) quadrature
-    px = -4*np.pi/params.lambda_m * mlib.Mrotation(np.pi/2) @ fieldsDC_i
-
-    # q (amplitude) quadrature to force
-    Fq_i = -2/scc.c * adjoint(fieldsDC_i)
-    Fq_o = -2/scc.c * adjoint(fieldsDC_o)
-
-    # mechanical susceptibility
-    chi = -1/(params.M_kg * (2*np.pi*F_Hz)**2)
-    chi = chi.reshape((len(F_Hz), 1, 1))
-
-    edgesAC['EX.fr.r'] = mlib.diag(-1)
-    edgesAC['EX.px'] = px
-    edgesAC['EX.fr.Fq.i'] = Fq_i
-    edgesAC['EX.fr.Fq.o'] = Fq_o
-    edgesAC['EX.chi'] = chi
 
     compAC = sflu.computer(eye=mlib.Id)
     compAC.compute(edge_map=edgesAC)
@@ -421,7 +350,7 @@ def plot_HRMirrorRPReduced_graph(sflu_HRMirrorRPReduced, tpath_join):
         fh.write(sflu.convert_self2yamlstr())
     G1 = sflu.G.copy()
     sflu.graph_reduce_auto_pos(lX=-12, rX=+12, Y=0, dY=-5)
-    sflu.reduce(*reduce_list_HRMirrorRPReduced)
+    sflu.reduce_auto()
     sflu.graph_reduce_auto_pos(lX=-15, rX=+15, Y=-5, dY=-5)
     G2 = sflu.G.copy()
 
@@ -438,7 +367,7 @@ def plot_HRMirrorRP_graph(sflu_HRMirrorRP, tpath_join):
         fh.write(sflu.convert_self2yamlstr())
     G1 = sflu.G.copy()
     sflu.graph_reduce_auto_pos(lX=-12, rX=+12, Y=0, dY=-5)
-    sflu.reduce(*reduce_list_HRMirrorRP)
+    sflu.reduce_auto()
     sflu.graph_reduce_auto_pos(lX=-15, rX=+15, Y=-5, dY=-5)
     G2 = sflu.G.copy()
 

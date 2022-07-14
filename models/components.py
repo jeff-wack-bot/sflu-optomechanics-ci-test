@@ -237,10 +237,8 @@ class HRMirrorRP(optics.GraphElement):
     """
     GraphElement representing only the HR surface of a mirror but including
     radiation pressure effects in the full graph without any manual reduction
-
-    extra_tp: If true add test points for position and force (Default: True)
     """
-    def __init__(self, extra_tp=True, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.locations.update({
             'fr.i': (-4, +5),
@@ -263,30 +261,88 @@ class HRMirrorRP(optics.GraphElement):
             ('fr.o.tp', 'fr.o'): '1',
         })
 
-        self.extra_tp = extra_tp
-        if extra_tp:
-            self.locations.update({
-                'pos.exc': (+11, -2),
-                'pos.tp': (+11, +2),
-                'fr.F.i.exc': (+7, +8),
-            })
+        self.locations.update({
+            'pos.exc': (+11, -2),
+            'pos.tp': (+11, +2),
+            'fr.F.i.exc': (+7, +8),
+        })
 
-            self.edges.update({
-                ('pos.tp', 'pos'): '1s',
-                ('pos', 'pos.exc'): '1s',
-                ('fr.F.i', 'fr.F.i.exc'): '1a',
-            })
+        self.edges.update({
+            ('pos.tp', 'pos'): '1s',
+            ('pos', 'pos.exc'): '1s',
+            ('fr.F.i', 'fr.F.i.exc'): '1a',
+        })
 
     def properties(self, nodes, edges, rot_deg, **kwargs):
         nodes["fr.o"]['angle'] = +135
         nodes['fr.i']['angle'] = +135
         nodes['fr.F.i']['angle'] = -45
         nodes['pos']['angle'] = 150
-        edges[('fr.o', 'pos')]['handed'] = 'r'
+        edges[('fr.o', 'pos')]['handed'] = 'l'
         edges[('pos', 'fr.F.o')]['handed'] = 'r'
-        edges[('fr.F.o', 'fr.o')]['handed'] = 'r'
+        edges[('fr.F.o', 'fr.o')]['handed'] = 'l'
         edges[('fr.F.i', 'fr.i')]['handed'] = 'l'
         edges[('pos', 'fr.F.i')]['handed'] = 'r'
-        if self.extra_tp:
-            edges[('pos.tp', 'pos')]['handed'] = 'r'
-            edges[('pos', 'pos.exc')]['handed'] = 'r'
+        edges[('pos.tp', 'pos')]['handed'] = 'r'
+        edges[('pos', 'pos.exc')]['handed'] = 'r'
+
+
+class HRMirrorRPEdge:
+    def __init__(
+            self,
+            name,
+            Thr=0,
+            M_kg=None,
+            lambda_m=1064e-9,
+            mlib=mats_planewave,
+    ):
+        self.name = name
+        self.t = np.sqrt(Thr)
+        self.r = np.sqrt(1 - Thr)
+        self.suscept_m_N = lambda F_Hz: -1/(M_kg * (2*np.pi*F_Hz)**2)
+        self.lambda_m = lambda_m
+        self.mlib=mlib
+
+    def _optic_edges(self, r):
+        edge_map = {
+            self.name + '.fr.r': -r,
+        }
+        return edge_map
+
+    def edgesDC(self):
+        edge_map = self._optic_edges(self.mlib.diag(self.r))
+        # no radiation pressure at DC
+        zz = {k: np.zeros_like(self.mlib[k]) for k in self.mlib.keys() if 'Id' in k}
+        edge_map.update({
+            self.name + '.fr.Fq.i': zz['Id_a'],
+            self.name + '.fr.Fq.o': zz['Id_a'],
+            self.name + '.chi': zz['Id_s'],
+            self.name + '.px': zz['Id_v'],
+        })
+        return edge_map
+
+    def edgesAC(self, F_Hz, resultsDC):
+        edge_map = self._optic_edges(self.mlib.diag(self.r))
+
+        # DC fields at the front of the mirror
+        fieldsDC_i = resultsDC[self.name + '.fr.i.tp']
+        fieldsDC_o = resultsDC[self.name + '.fr.o.tp']
+
+        # displacement to p (phase) quadrature
+        px = -4*np.pi/self.lambda_m * self.mlib.Mrotation(np.pi/2) @ fieldsDC_i
+
+        # q (amplitude) quadrature to force
+        Fq_i = -2/scc.c * adjoint(fieldsDC_i)
+        Fq_o = -2/scc.c * adjoint(fieldsDC_o)
+
+        # mechanical susceptibility
+        # chi = -1/(self.M_kg * (2*np.pi*F_Hz)**2)
+        chi = self.suscept_m_N(F_Hz).reshape((len(F_Hz), 1, 1))
+
+        edge_map.update({
+            self.name + '.fr.Fq.i': Fq_i,
+            self.name + '.fr.Fq.o': Fq_o,
+            self.name + '.px': px,
+            self.name + '.chi': chi,
+        })
+        return edge_map
