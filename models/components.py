@@ -8,6 +8,8 @@ from gwinc.noise.quantum_lib import (
     mats_planewave,
     mats_mode_mismatch,
     adjoint,
+    matrix_stack,
+    Vnorm_sq,
 )
 
 
@@ -301,7 +303,7 @@ class HRMirrorRPEdge:
         self.r = np.sqrt(1 - Thr)
         self.suscept_m_N = lambda F_Hz: -1/(M_kg * (2*np.pi*F_Hz)**2)
         self.lambda_m = lambda_m
-        self.mlib=mlib
+        self.mlib = mlib
 
     def _optic_edges(self, r):
         edge_map = {
@@ -344,5 +346,159 @@ class HRMirrorRPEdge:
             self.name + '.fr.Fq.o': Fq_o,
             self.name + '.px': px,
             self.name + '.chi': chi,
+        })
+        return edge_map
+
+
+class RPMirrorElement(optics.GraphElement):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.locations.update({
+            "fr.i": (-6, +7),
+            "fr.o": (-6, -7),
+            "bk.i": (+6, -7),
+            "bk.o": (+6, +7),
+
+            "fr.F.i": (-2, +5),
+            "fr.F.o": (-2, -5),
+            "bk.F.i": (+2, -5),
+            "bk.F.o": (+2, +5),
+
+            "pos": (0, 0),
+        })
+        self.locations.update({
+            "fr.i.tp": (-9, +10),
+            "fr.o.tp": (-9, -10),
+            "bk.i.tp": (+9, -10),
+            "bk.o.tp": (+9, +10),
+
+            "pos.tp": (-9, 0),
+            "pos.exc": (+9, 0),
+
+            "fr.F.i.exc": (0, 10),
+            "bk.F.i.exc": (0, -10),
+        })
+
+        self.edges.update({
+            ("fr.o", "fr.i"): ".fr.r",
+            ("bk.o", "bk.i"): ".bk.r",
+            ("bk.o", "fr.i"): ".fr.t",
+            ("fr.o", "bk.i"): ".bk.t",
+
+            ("fr.F.i", "fr.i"): ".fr.Fq.i",
+            ("fr.F.o", "fr.o"): ".fr.Fq.o",
+            ("bk.F.i", "bk.i"): ".bk.Fq.i",
+            ("bk.F.o", "bk.o"): ".bk.Fq.o",
+
+            ("pos", "fr.F.i"): ".chi",
+            ("pos", "fr.F.o"): ".chi",
+            ("pos", "bk.F.i"): ".chi",
+            ("pos", "bk.F.o"): ".chi",
+
+            ("fr.o", "pos"): ".fr.px",
+            ("bk.o", "pos"): ".bk.px",
+        })
+        self.edges.update({
+            ("fr.i.tp", "fr.i"): "1",
+            ("fr.o.tp", "fr.o"): "1",
+            ("bk.i.tp", "bk.i"): "1",
+            ("bk.o.tp", "bk.o"): "1",
+
+            ("pos.tp", "pos"): "1s",
+            ("pos", "pos.exc"): "1s",
+
+            ("fr.F.i", "fr.F.i.exc"): "1a",
+            ("bk.F.i", "bk.F.i.exc"): "1a",
+        })
+
+    def properties(self, nodes, edges, rot_deg, **kwargs):
+        nodes["fr.i"]["angle"] = 135
+        nodes["bk.o"]["angle"] = 45
+        edges[("fr.o", "fr.i")]["handed"] = "r"
+        super().properties(
+            nodes=nodes,
+            edges=edges,
+            rot_deg=rot_deg,
+            **kwargs,
+        )
+        return
+
+
+class RPMirrorEdge:
+    def __init__(
+            self,
+            name,
+            Thr=0,
+            M_kg=None,
+            lambda_m=1064e-9,
+            mlib=mats_planewave,
+    ):
+        self.name = name
+        self.t = np.sqrt(Thr)
+        self.r = np.sqrt(1 - Thr)
+        self.suscept_m_N = lambda F_Hz: -1/(M_kg * (2*np.pi*F_Hz)**2)
+        self.lambda_m = lambda_m
+        self.mlib = mlib
+
+    def _optic_edges(self, r, t):
+        edge_map = {
+            self.name + ".fr.r": -r,
+            self.name + ".bk.r": +r,
+            self.name + ".fr.t": t,
+            self.name + ".bk.t": t,
+        }
+        return edge_map
+
+    def edgesDC(self):
+        edge_map = self._optic_edges(self.mlib.diag(self.r), self.mlib.diag(self.t))
+        # no radiation pressure at DC
+        zz = {k: np.zeros_like(self.mlib[k]) for k in self.mlib.keys() if 'Id' in k}
+        edge_map.update({
+            self.name + ".fr.Fq.i": zz["Id_a"],
+            self.name + ".fr.Fq.o": zz["Id_a"],
+            self.name + ".bk.Fq.i": zz["Id_a"],
+            self.name + ".bk.Fq.o": zz["Id_a"],
+            self.name + ".fr.px": zz["Id_v"],
+            self.name + ".bk.px": zz["Id_v"],
+            self.name + ".chi": zz["Id_s"],
+        })
+        return edge_map
+
+    def edgesAC(self, F_Hz, resultsDC):
+        edge_map = self._optic_edges(self.mlib.diag(self.r), self.mlib.diag(self.t))
+
+        # DC fields at the mirror faces
+        def get_fieldsDC(tp):
+            try:
+                return resultsDC[self.name + tp]
+            except KeyError:
+                return np.zeros((2, 1))
+
+        fieldsDC_fr_i = get_fieldsDC(".fr.i.tp")
+        fieldsDC_fr_o = get_fieldsDC(".fr.o.tp")
+        fieldsDC_bk_i = get_fieldsDC(".bk.i.tp")
+        fieldsDC_bk_o = get_fieldsDC(".bk.o.tp")
+
+        # displacement to p (phase) quadrature
+        px_fr = -4*np.pi/self.lambda_m * self.r * self.mlib.Mrotation(np.pi/2) @ fieldsDC_fr_i
+        px_bk = -4*np.pi/self.lambda_m * self.r * self.mlib.Mrotation(np.pi/2) @ fieldsDC_bk_i
+
+        # q (amplitude) quadrature to force
+        Fq_fr_i = -2/scc.c * adjoint(fieldsDC_fr_i)
+        Fq_fr_o = -2/scc.c * adjoint(fieldsDC_fr_o)
+        Fq_bk_i = +2/scc.c * adjoint(fieldsDC_bk_i)
+        Fq_bk_o = +2/scc.c * adjoint(fieldsDC_bk_o)
+
+        # mechanical susceptibility
+        chi = self.suscept_m_N(F_Hz).reshape((len(F_Hz), 1, 1))
+
+        edge_map.update({
+            self.name + ".fr.Fq.i": Fq_fr_i,
+            self.name + ".fr.Fq.o": Fq_fr_o,
+            self.name + ".bk.Fq.i": Fq_bk_i,
+            self.name + ".bk.Fq.o": Fq_bk_o,
+            self.name + ".fr.px": px_fr,
+            self.name + ".bk.px": px_bk,
+            self.name + ".chi": chi,
         })
         return edge_map
