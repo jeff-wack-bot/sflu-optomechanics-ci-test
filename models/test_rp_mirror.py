@@ -356,7 +356,7 @@ def test_sflu_OS_compare_optickle(
 
     LOa = np.sqrt(paramsOS.Plo_W) * adjoint(mlib.LO(0))
     opt_tf = LOa @ resultsAC_opt['EX.pos.exc']
-    opt_tf = opt_tf[..., 0, 0]
+    opt_tf = -opt_tf[..., 0, 0]
     mech_tf = resultsAC_mech['EX.fr.F.i.exc']
     mech_tf = mech_tf[..., 0, 0]
     opt_tf_optickle = opt.getTF('REFL_DIFF', 'EX') / 2
@@ -623,7 +623,7 @@ def test_sflu_OSbk_compare_optickle(
 
     LOa = np.sqrt(paramsOS.Plo_W) * adjoint(mlib.LO(0))
     opt_tf = LOa @ resultsAC_opt['EX.pos.exc']
-    opt_tf = opt_tf[..., 0, 0]
+    opt_tf = -opt_tf[..., 0, 0]
     mech_tf = resultsAC_mech['EX.fr.F.i.exc']
     mech_tf = mech_tf[..., 0, 0]
     opt_tf_optickle = opt.getTF('REFL_DIFF', 'EX') / 2
@@ -873,7 +873,7 @@ def plot_mirror_graph(sflu_mirror, tpath_join):
     G1 = sflu.G.copy()
     sflu.graph_reduce_auto_pos(lX=-10, rX=+10, Y=8, dY=-8),
     sflu.reduce_auto()
-    sflu.graph_reduce_auto_pos(lX=-10, rX=+10, Y=8, dY=-8),
+    sflu.graph_reduce_auto_pos_io(lX=-10, rX=+10, Y=8, dY=-8),
     G2 = sflu.G.copy()
 
     nx2tikz.dump_pdf(
@@ -887,7 +887,7 @@ def plot_OS_graph(sflu_OS, tpath_join):
     G1 = sflu.G.copy()
     sflu.graph_reduce_auto_pos(lX=-10, rX=+10, Y=8, dY=-8),
     sflu.reduce_auto()
-    sflu.graph_reduce_auto_pos(lX=-10, rX=+10, Y=8, dY=-8),
+    sflu.graph_reduce_auto_pos_io(lX=-10, rX=+10, Y=8, dY=-8),
     G2 = sflu.G.copy()
 
     nx2tikz.dump_pdf(
@@ -901,7 +901,7 @@ def plot_OSbk_graph(sflu_OSbk, tpath_join):
     G1 = sflu.G.copy()
     sflu.graph_reduce_auto_pos(lX=-10, rX=+10, Y=8, dY=-8),
     sflu.reduce_auto()
-    sflu.graph_reduce_auto_pos(lX=-10, rX=+10, Y=8, dY=-8),
+    sflu.graph_reduce_auto_pos_io(lX=-10, rX=+10, Y=8, dY=-8),
     G2 = sflu.G.copy()
 
     nx2tikz.dump_pdf(

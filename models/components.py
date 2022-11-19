@@ -480,14 +480,14 @@ class RPMirrorEdge:
         fieldsDC_bk_o = get_fieldsDC(".bk.o.tp")
 
         # displacement to p (phase) quadrature
-        px_fr = -4*np.pi/self.lambda_m * self.r * self.mlib.Mrotation(np.pi/2) @ fieldsDC_fr_i
-        px_bk = -4*np.pi/self.lambda_m * self.r * self.mlib.Mrotation(np.pi/2) @ fieldsDC_bk_i
+        px_fr = 4*np.pi/self.lambda_m * self.r * self.mlib.Mrotation(np.pi/2) @ fieldsDC_fr_i
+        px_bk = 4*np.pi/self.lambda_m * self.r * self.mlib.Mrotation(np.pi/2) @ fieldsDC_bk_i
 
         # q (amplitude) quadrature to force
-        Fq_fr_i = -2/scc.c * adjoint(fieldsDC_fr_i)
-        Fq_fr_o = -2/scc.c * adjoint(fieldsDC_fr_o)
-        Fq_bk_i = +2/scc.c * adjoint(fieldsDC_bk_i)
-        Fq_bk_o = +2/scc.c * adjoint(fieldsDC_bk_o)
+        Fq_fr_i = +2/scc.c * adjoint(fieldsDC_fr_i)
+        Fq_fr_o = +2/scc.c * adjoint(fieldsDC_fr_o)
+        Fq_bk_i = -2/scc.c * adjoint(fieldsDC_bk_i)
+        Fq_bk_o = -2/scc.c * adjoint(fieldsDC_bk_o)
 
         # mechanical susceptibility
         chi = self.suscept_m_N(F_Hz).reshape((len(F_Hz), 1, 1))
