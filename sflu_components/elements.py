@@ -10,10 +10,10 @@ class RPMirrorElement(optics.GraphElement):
             "bk.i": (+6, -7),
             "bk.o": (+6, +7),
 
-            "fr.F.i": (-2, +5),
-            "fr.F.o": (-2, -5),
-            "bk.F.i": (+2, -5),
-            "bk.F.o": (+2, +5),
+            # "fr.F.i": (-2, +5),
+            # "fr.F.o": (-2, -5),
+            # "bk.F.i": (+2, -5),
+            # "bk.F.o": (+2, +5),
 
             "pos": (0, 0),
         })
@@ -26,8 +26,8 @@ class RPMirrorElement(optics.GraphElement):
             "pos.tp": (-9, 0),
             "pos.exc": (+9, 0),
 
-            "fr.F.i.exc": (0, 10),
-            "bk.F.i.exc": (0, -10),
+            # "fr.F.i.exc": (0, 10),
+            # "bk.F.i.exc": (0, -10),
         })
 
         self.edges.update({
@@ -36,15 +36,20 @@ class RPMirrorElement(optics.GraphElement):
             ("bk.o", "fr.i"): ".fr.t",
             ("fr.o", "bk.i"): ".bk.t",
 
-            ("fr.F.i", "fr.i"): ".fr.Fq.i",
-            ("fr.F.o", "fr.o"): ".fr.Fq.o",
-            ("bk.F.i", "bk.i"): ".bk.Fq.i",
-            ("bk.F.o", "bk.o"): ".bk.Fq.o",
+            # ("fr.F.i", "fr.i"): ".fr.Fq.i",
+            # ("fr.F.o", "fr.o"): ".fr.Fq.o",
+            # ("bk.F.i", "bk.i"): ".bk.Fq.i",
+            # ("bk.F.o", "bk.o"): ".bk.Fq.o",
 
-            ("pos", "fr.F.i"): ".chi",
-            ("pos", "fr.F.o"): ".chi",
-            ("pos", "bk.F.i"): ".chi",
-            ("pos", "bk.F.o"): ".chi",
+            # ("pos", "fr.F.i"): ".chi",
+            # ("pos", "fr.F.o"): ".chi",
+            # ("pos", "bk.F.i"): ".chi",
+            # ("pos", "bk.F.o"): ".chi",
+
+            ("pos", "fr.i"): ".fr.xq.i",
+            ("pos", "fr.o"): ".fr.xq.o",
+            ("pos", "bk.i"): ".bk.xq.i",
+            ("pos", "bk.o"): ".bk.xq.o",
 
             ("fr.o", "pos"): ".fr.px",
             ("bk.o", "pos"): ".bk.px",
@@ -57,9 +62,6 @@ class RPMirrorElement(optics.GraphElement):
 
             ("pos.tp", "pos"): "1s",
             ("pos", "pos.exc"): "1s",
-
-            ("fr.F.i", "fr.F.i.exc"): "1a",
-            ("bk.F.i", "bk.F.i.exc"): "1a",
         })
 
     def properties(self, nodes, edges, rot_deg, **kwargs):

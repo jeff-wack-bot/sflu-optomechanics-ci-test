@@ -6,7 +6,7 @@ Test radiation pressure effects on a mirror
 """
 
 import numpy as np
-from wavestate.control.SFLU import SFLU, optics, nx2tikz, SFLUcompute
+from wavestate.control.SFLU import SFLU, optics, nx2tikz
 from sflu_components import elements, edges, simlib
 from sflu_components.lib import MatrixLib, adjoint, Vnorm_sq
 from gwinc.struct import Struct
@@ -152,7 +152,7 @@ def sflu_mirror_results(sflu_mirror, pprint):
     compAC.compute(edge_map=edgesAC)
     resultsAC = compAC.inverse_row(
         {"M.pos.tp": None},
-        {"M.fr.F.i.exc"},
+        {"M.pos.exc"},
     )
 
     return resultsAC
@@ -160,7 +160,9 @@ def sflu_mirror_results(sflu_mirror, pprint):
 
 def test_sflu_mirror(sflu_mirror_results, tpath_join, plotTF):
     resultsAC = sflu_mirror_results
-    mech_tf = resultsAC["M.fr.F.i.exc"][...,0, 0]
+    # mech_tf = resultsAC["M.fr.F.i.exc"][...,0, 0]
+    chi = -1/(paramsMirr.M_kg * (2*np.pi*F_Hz)**2)
+    mech_tf = resultsAC["M.pos.exc"] * chi
 
     fig = plotTF(F_Hz, mech_tf)
     fig.savefig(tpath_join("mech_tf.pdf"))
@@ -169,7 +171,9 @@ def test_sflu_mirror(sflu_mirror_results, tpath_join, plotTF):
 def test_sflu_mirror_compare_sim(
         sflu_mirror_results, opt_mirr, kat_mirr, tpath_join, plotTF):
     resultsAC = sflu_mirror_results
-    mech_tf_sflu = resultsAC["M.fr.F.i.exc"][...,0, 0]
+    # mech_tf_sflu = resultsAC["M.fr.F.i.exc"][...,0, 0]
+    chi = -1/(paramsMirr.M_kg * (2*np.pi*F_Hz)**2)
+    mech_tf_sflu = resultsAC["M.pos.exc"] * chi
     mech_tf_optickle = opt_mirr.getMechTF("M", "M")
 
     fig = plotTF(F_Hz, mech_tf_sflu, label='SFLU')
@@ -313,8 +317,8 @@ def sflu_OS_results(sflu_OS, pprint):
     edgesAC = deepcopy(Id)
     edgesAC.update(IX.edgesAC(F_Hz, resultsDC))
     edgesAC.update(EX.edgesAC(F_Hz, resultsDC))
-    edgesAC.update(ArmLink.edgesAC(F_Hz))
-    edgesAC.update(BackLaserLink.edgesAC(F_Hz))
+    edgesAC.update(ArmLink.edgesAC(F_Hz, resultsDC))
+    edgesAC.update(BackLaserLink.edgesAC(F_Hz, resultsDC))
 
     compAC = sflu.computer(eye=mlib.Id)
     compAC.compute(edge_map=edgesAC)
@@ -324,7 +328,7 @@ def sflu_OS_results(sflu_OS, pprint):
     )
     resultsAC_mech = compAC.inverse_row(
         {"EX.pos.tp": None},
-        {"EX.fr.F.i.exc"},
+        {"EX.pos.exc"},
     )
 
     return resultsDC, resultsAC_opt, resultsAC_mech
@@ -338,7 +342,10 @@ def test_sflu_OS(sflu_OS_results, tpath_join, pprint, plotTF):
     LOa = np.sqrt(paramsOS.Plo_W) * adjoint(mlib.LO(0))
     opt_tf = LOa @ resultsAC_opt["EX.pos.exc"]
     opt_tf = -opt_tf[..., 0, 0]
-    mech_tf = resultsAC_mech["EX.fr.F.i.exc"][..., 0, 0]
+
+    chi = -1/(paramsOS.M_kg * (2*np.pi*F_Hz)**2)
+    mech_tf = resultsAC_mech["EX.pos.exc"] * chi
+    # mech_tf = resultsAC_mech["EX.fr.F.i.exc"][..., 0, 0]
 
     fig = plotTF(F_Hz, opt_tf, label="SFLU")
     fig.axes[0].legend()
@@ -367,8 +374,9 @@ def test_sflu_OS_compare_sim(
     LOa = np.sqrt(paramsOS.Plo_W) * adjoint(mlib.LO(0))
     opt_tf = LOa @ resultsAC_opt['EX.pos.exc']
     opt_tf = -opt_tf[..., 0, 0]
-    mech_tf = resultsAC_mech['EX.fr.F.i.exc']
-    mech_tf = mech_tf[..., 0, 0]
+    # mech_tf = resultsAC_mech['EX.fr.F.i.exc']
+    chi = -1/(paramsOS.M_kg * (2*np.pi*F_Hz)**2)
+    mech_tf = resultsAC_mech['EX.pos.exc'] * chi
     opt_tf_optickle = opt.getTF('REFL_DIFF', 'EX') / 2
     opt_tf_finesse = katFR.getTF('REFL_DIFF', 'EX') / 2
 

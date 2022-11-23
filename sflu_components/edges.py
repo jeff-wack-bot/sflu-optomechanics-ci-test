@@ -29,7 +29,9 @@ class MirrorEdge:
         self.lambda_m = lambda_m
         self.mlib = mlib
 
-    def _edges(self, t, r):
+    def _optic_edges(self):
+        t = self.mlib.diag(self.t)
+        r = self.mlib.diag(self.r)
         edge_map = {
             self.name + '.fr.t': t,
             self.name + '.bk.t': t,
@@ -42,7 +44,7 @@ class MirrorEdge:
         """
         Returns the DC edge map dictionary
         """
-        edge_map = self._edges(self.mlib.diag(self.t), self.mlib.diag(self.r))
+        edge_map = self._optic_edges()
         edge_map.update({self.name + '.fr.px': self.mlib.Id})
         return edge_map
 
@@ -53,13 +55,45 @@ class MirrorEdge:
         F_Hz: Frequency vector at which to evaluate the edge map
         resultsDC: the dictionary of DC results
         """
-        edge_map = self._edges(self.mlib.diag(self.t), self.mlib.diag(self.r))
+        edge_map = self._optic_edges()
         try:
             fieldsDC = resultsDC[self.name + '.fr.i.tp']
             rtW_m = 4*np.pi/self.lambda_m * self.mlib.Mrotation(np.pi/2) @ fieldsDC
             edge_map.update({self.name + '.fr.px': rtW_m})
         except KeyError:
             pass
+        return edge_map
+
+
+class BSEdge:
+    def __init__(
+            self,
+            name,
+            Thr=0.5,
+            Lhr=0,
+            mlib=MatrixLib(nhom=0),
+    ):
+        self.name = name
+        self.r = np.sqrt(1 - Thr - Lhr)
+        self.t = np.sqrt(Thr)
+        self.mlib = mlib
+
+    def _optic_edges(self):
+        t = self.mlib.diag(self.t)
+        r = self.mlib.diag(self.r)
+        edge_map = {
+            self.name + ".fr.r": -r,
+            self.name + ".bk.r": +r,
+            self.name + ".t": t,
+        }
+        return edge_map
+
+    def edgesDC(self):
+        edge_map = self._optic_edges()
+        return edge_map
+
+    def edgesAC(self, F_Hz, resultsDC):
+        edge_map = self._optic_edges()
         return edge_map
 
 
@@ -92,7 +126,7 @@ class LinkEdge:
         Lmat = self.mlib.Mrotation(self.detune_rad)
         return self._edges(Lmat)
 
-    def edgesAC(self, F_Hz):
+    def edgesAC(self, F_Hz, resultsDC):
         """
         Returns the AC edge map dictionary
 
@@ -108,18 +142,22 @@ class RPMirrorEdge:
             self,
             name,
             Thr=0,
+            Lhr=0,
+            Rar=0,
             M_kg=None,
             lambda_m=1064e-9,
             mlib=MatrixLib(nhom=0),
     ):
         self.name = name
         self.t = np.sqrt(Thr)
-        self.r = np.sqrt(1 - Thr)
+        self.r = np.sqrt(1 - Thr - Lhr - Rar)
         self.suscept_m_N = lambda F_Hz: -1/(M_kg * (2*np.pi*F_Hz)**2)
         self.lambda_m = lambda_m
         self.mlib = mlib
 
-    def _optic_edges(self, r, t):
+    def _optic_edges(self):
+        t = self.mlib.diag(self.t)
+        r = self.mlib.diag(self.r)
         edge_map = {
             self.name + ".fr.r": -r,
             self.name + ".bk.r": +r,
@@ -129,22 +167,21 @@ class RPMirrorEdge:
         return edge_map
 
     def edgesDC(self):
-        edge_map = self._optic_edges(self.mlib.diag(self.r), self.mlib.diag(self.t))
+        edge_map = self._optic_edges()
         # no radiation pressure at DC
         zz = {k: 0 * getattr(self.mlib, k) for k in ['Id_a', 'Id_v', 'Id_s']}
         edge_map.update({
-            self.name + ".fr.Fq.i": zz["Id_a"],
-            self.name + ".fr.Fq.o": zz["Id_a"],
-            self.name + ".bk.Fq.i": zz["Id_a"],
-            self.name + ".bk.Fq.o": zz["Id_a"],
+            self.name + ".fr.xq.i": zz["Id_a"],
+            self.name + ".fr.xq.o": zz["Id_a"],
+            self.name + ".bk.xq.i": zz["Id_a"],
+            self.name + ".bk.xq.o": zz["Id_a"],
             self.name + ".fr.px": zz["Id_v"],
             self.name + ".bk.px": zz["Id_v"],
-            self.name + ".chi": zz["Id_s"],
         })
         return edge_map
 
     def edgesAC(self, F_Hz, resultsDC):
-        edge_map = self._optic_edges(self.mlib.diag(self.r), self.mlib.diag(self.t))
+        edge_map = self._optic_edges()
 
         # DC fields at the mirror faces
         def get_fieldsDC(tp):
@@ -162,22 +199,25 @@ class RPMirrorEdge:
         px_fr = 4*np.pi/self.lambda_m * self.r * self.mlib.Mrotation(np.pi/2) @ fieldsDC_fr_i
         px_bk = 4*np.pi/self.lambda_m * self.r * self.mlib.Mrotation(np.pi/2) @ fieldsDC_bk_i
 
-        # q (amplitude) quadrature to force
-        Fq_fr_i = +2/scc.c * adjoint(fieldsDC_fr_i)
-        Fq_fr_o = +2/scc.c * adjoint(fieldsDC_fr_o)
-        Fq_bk_i = -2/scc.c * adjoint(fieldsDC_bk_i)
-        Fq_bk_o = -2/scc.c * adjoint(fieldsDC_bk_o)
 
         # mechanical susceptibility
         chi = self.suscept_m_N(F_Hz).reshape((len(F_Hz), 1, 1))
 
+        # q (amplitude) quadrature to displacement
+        def xq_port(fieldsDC):
+            return 2 / scc.c * adjoint(fieldsDC) * chi
+
+        xq_fr_i = +xq_port(fieldsDC_fr_i)
+        xq_fr_o = +xq_port(fieldsDC_fr_o)
+        xq_bk_i = -xq_port(fieldsDC_bk_i)
+        xq_bk_o = -xq_port(fieldsDC_bk_o)
+
         edge_map.update({
-            self.name + ".fr.Fq.i": Fq_fr_i,
-            self.name + ".fr.Fq.o": Fq_fr_o,
-            self.name + ".bk.Fq.i": Fq_bk_i,
-            self.name + ".bk.Fq.o": Fq_bk_o,
+            self.name + ".fr.xq.i": xq_fr_i,
+            self.name + ".fr.xq.o": xq_fr_o,
+            self.name + ".bk.xq.i": xq_bk_i,
+            self.name + ".bk.xq.o": xq_bk_o,
             self.name + ".fr.px": px_fr,
             self.name + ".bk.px": px_bk,
-            self.name + ".chi": chi,
         })
         return edge_map
