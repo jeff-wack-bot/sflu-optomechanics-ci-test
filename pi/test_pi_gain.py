@@ -148,7 +148,14 @@ def sflu_results(sflu_func, par, *args, **kwargs):
     SEC_gouy_rad = par.mode_order * par.SEC_gouy_deg * np.pi/180
     PRC_gouy_rad = par.mode_order * par.PRC_gouy_deg * np.pi/180
 
-    EX = edges.RPMirrorEdge("EX", Thr=par.Te, Lhr=par.Lhr)
+    def suscept_m_N(F_Hz):
+        den = par.fmech_Hz**2 - F_Hz**2 + 1j * par.fmech_Hz * F_Hz / par.Qm
+        return 1 / par.M_kg / (2 * np.pi)**2 / den
+
+    EX = edges.RPMirrorEdge(
+        "EX", Thr=par.Te, Lhr=par.Lhr,
+        suscept_m_N=suscept_m_N, overlap=par.overlap,
+    )
 
     if sflu_func == sflu_FP:
         non_RP_optics = Struct(
@@ -180,39 +187,25 @@ def sflu_results(sflu_func, par, *args, **kwargs):
         "1": mlib.Id,
         "1s": np.eye((1)),
     }
-    for optic in non_RP_optics.values():
-        edge_map.update(optic.edgesAC(F_Hz, dict()))
-    for link in links.values():
-        edge_map.update(link.edgesAC(F_Hz, dict()))
 
-    suscept_m_N = -1j * par.Qm / par.M_kg / (2 * np.pi * F_Hz)**2
-    px_fr = (-4 * np.pi / par.lambda_m * re * np.sqrt(par.Parm_W) *
-             par.overlap * mlib.LO(0)
-    )
-    px_bk = np.zeros((2, 1))
-
-    def xq_port(fieldsDC):
-        return 2 / scc.c * suscept_m_N * par.overlap * fieldsDC
-
-    fieldsDC_fr_i = np.sqrt(par.Parm_W) * adjoint(mlib.LO(np.pi/2))
+    fieldsDC_fr_i = np.sqrt(par.Parm_W) * mlib.LO(np.pi/2)
     fieldsDC_fr_o = -re * fieldsDC_fr_i
     fieldsDC_bk_o = te * fieldsDC_fr_i
-    fieldsDC_bk_i = np.zeros((1, 2))
+    fieldsDC_bk_i = 0 * mlib.Id_v
 
-    xq_fr_i = -xq_port(fieldsDC_fr_i)
-    xq_fr_o = -xq_port(fieldsDC_fr_o)
-    xq_bk_i = +xq_port(fieldsDC_bk_i)
-    xq_bk_o = +xq_port(fieldsDC_bk_o)
+    resultsDC = {
+        "EX.fr.i.tp": fieldsDC_fr_i,
+        "EX.fr.o.tp": fieldsDC_fr_o,
+        "EX.bk.i.tp": fieldsDC_bk_i,
+        "EX.bk.o.tp": fieldsDC_bk_o,
+    }
 
-    edge_map.update(EX._optic_edges())
-    edge_map.update({
-        "EX.fr.px": px_fr,
-        "EX.bk.px": px_bk,
-        "EX.fr.xq.i": xq_fr_i,
-        "EX.fr.xq.o": xq_fr_o,
-        "EX.bk.xq.i": xq_bk_i,
-        "EX.bk.xq.o": xq_bk_o,
-    })
+    for optic in non_RP_optics.values():
+        edge_map.update(optic.edgesAC(F_Hz, resultsDC))
+    for link in links.values():
+        edge_map.update(link.edgesAC(F_Hz, resultsDC))
+
+    edge_map.update(EX.edgesAC(F_Hz, resultsDC))
 
     comp = sflu.computer()
     comp.compute(edge_map=edge_map)

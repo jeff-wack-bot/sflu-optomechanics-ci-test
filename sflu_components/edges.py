@@ -190,7 +190,7 @@ class RPMirrorEdge:
             try:
                 return resultsDC[self.name + tp]
             except KeyError:
-                return np.zeros((2, 1))
+                return 0 * self.mlib.Id_v
 
         fieldsDC_fr_i = get_fieldsDC(".fr.i.tp")
         fieldsDC_fr_o = get_fieldsDC(".fr.o.tp")
@@ -198,11 +198,16 @@ class RPMirrorEdge:
         fieldsDC_bk_o = get_fieldsDC(".bk.o.tp")
 
         # displacement to p (phase) quadrature
-        px_fr = 4*np.pi/self.lambda_m * self.r * self.mlib.Mrotation(np.pi/2) @ fieldsDC_fr_i
-        px_bk = 4*np.pi/self.lambda_m * self.r * self.mlib.Mrotation(np.pi/2) @ fieldsDC_bk_i
+        px = 4 * np.pi / self.lambda_m * self.r * self.overlap
+        px_fr = px * self.mlib.Mrotation(np.pi/2) @ fieldsDC_fr_i
+        px_bk = px * self.mlib.Mrotation(np.pi/2) @ fieldsDC_bk_i
 
-        # mechanical susceptibility
-        chi = self.suscept_m_N(F_Hz).reshape((len(F_Hz), 1, 1))
+        # mechanical susceptibility, reshaped for multiplication
+        chi = self.suscept_m_N(F_Hz)
+        try:
+            chi = chi.reshape((-1, 1, 1))
+        except AttributeError:
+            chi = chi * self.mlib.Id_s
 
         # q (amplitude) quadrature to displacement
         def xq_port(fieldsDC):
