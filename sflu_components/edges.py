@@ -144,15 +144,17 @@ class RPMirrorEdge:
             Thr=0,
             Lhr=0,
             Rar=0,
-            M_kg=None,
+            suscept_m_N=lambda x: np.zeroslike(x),
             lambda_m=1064e-9,
+            overlap=1,
             mlib=MatrixLib(nhom=0),
     ):
         self.name = name
         self.t = np.sqrt(Thr)
         self.r = np.sqrt(1 - Thr - Lhr - Rar)
-        self.suscept_m_N = lambda F_Hz: -1/(M_kg * (2*np.pi*F_Hz)**2)
+        self.suscept_m_N = suscept_m_N
         self.lambda_m = lambda_m
+        self.overlap = overlap
         self.mlib = mlib
 
     def _optic_edges(self):
@@ -199,13 +201,12 @@ class RPMirrorEdge:
         px_fr = 4*np.pi/self.lambda_m * self.r * self.mlib.Mrotation(np.pi/2) @ fieldsDC_fr_i
         px_bk = 4*np.pi/self.lambda_m * self.r * self.mlib.Mrotation(np.pi/2) @ fieldsDC_bk_i
 
-
         # mechanical susceptibility
         chi = self.suscept_m_N(F_Hz).reshape((len(F_Hz), 1, 1))
 
         # q (amplitude) quadrature to displacement
         def xq_port(fieldsDC):
-            return 2 / scc.c * adjoint(fieldsDC) * chi
+            return 2 / scc.c * chi * self.overlap * adjoint(fieldsDC)
 
         xq_fr_i = +xq_port(fieldsDC_fr_i)
         xq_fr_o = +xq_port(fieldsDC_fr_o)
