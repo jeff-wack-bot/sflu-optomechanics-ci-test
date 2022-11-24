@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.constants as scc
 from gwinc.struct import Struct
-from .lib import MatrixLib, adjoint
+from .lib import MatrixLib, adjoint, block_diag
 
 pi2i = 2j*np.pi
 
@@ -106,12 +106,23 @@ class LinkEdge:
             name,
             L_m,
             detune_rad=0,
+            gouy_rad=None,
             mlib=MatrixLib(nhom=0),
     ):
         self.name = name
         self.L_m = L_m
         self.detune_rad = detune_rad
         self.mlib = mlib
+
+        if gouy_rad is None:
+            self.gouy_rad = np.zeros(mlib.nhom)
+        else:
+            if np.isscalar(gouy_rad):
+                assert mlib.nhom == 1
+                self.gouy_rad = np.array([gouy_rad])
+            else:
+                assert len(gouy_rad) == mlib.nhom
+                self.gouy_rad = gouy_rad
 
     def _edges(self, Lmat):
         edge_map = {
@@ -123,7 +134,7 @@ class LinkEdge:
         """
         Returns the DC edge map dictionary
         """
-        Lmat = self.mlib.Mrotation(self.detune_rad)
+        Lmat = self.mlib.Mrotation(self.detune_rad, *self.gouy_rad)
         return self._edges(Lmat)
 
     def edgesAC(self, F_Hz, resultsDC):
@@ -133,7 +144,7 @@ class LinkEdge:
         F_Hz: Frequency vector at which to evaluate the edge map
         """
         delay = self.mlib.diag(np.exp(-pi2i * F_Hz * self.L_m / scc.c))
-        Lmat = delay @ self.mlib.Mrotation(self.detune_rad)
+        Lmat = delay @ self.mlib.Mrotation(self.detune_rad, *self.gouy_rad)
         return self._edges(Lmat)
 
 
@@ -156,6 +167,11 @@ class RPMirrorEdge:
         self.lambda_m = lambda_m
         self.overlap = overlap
         self.mlib = mlib
+
+        if np.isscalar(overlap):
+            self.overlap = overlap * mlib.Id
+        else:
+            self.overlap = overlap
 
     def _optic_edges(self):
         t = self.mlib.diag(self.t)
@@ -199,19 +215,19 @@ class RPMirrorEdge:
 
         # displacement to p (phase) quadrature
         px = 4 * np.pi / self.lambda_m * self.r * self.overlap
-        px_fr = px * self.mlib.Mrotation(np.pi/2) @ fieldsDC_fr_i
-        px_bk = px * self.mlib.Mrotation(np.pi/2) @ fieldsDC_bk_i
+        px_fr = px @ self.mlib.Mrotation(np.pi/2) @ fieldsDC_fr_i
+        px_bk = px @ self.mlib.Mrotation(np.pi/2) @ fieldsDC_bk_i
 
         # mechanical susceptibility, reshaped for multiplication
         chi = self.suscept_m_N(F_Hz)
-        try:
-            chi = chi.reshape((-1, 1, 1))
-        except AttributeError:
+        if np.isscalar(chi):
             chi = chi * self.mlib.Id_s
+        else:
+            chi = chi.reshape((-1, 1, 1))
 
         # q (amplitude) quadrature to displacement
         def xq_port(fieldsDC):
-            return 2 / scc.c * chi * self.overlap * adjoint(fieldsDC)
+            return 2 / scc.c * chi * adjoint(self.overlap @ fieldsDC)
 
         xq_fr_i = +xq_port(fieldsDC_fr_i)
         xq_fr_o = +xq_port(fieldsDC_fr_o)

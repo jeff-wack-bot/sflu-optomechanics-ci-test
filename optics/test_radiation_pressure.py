@@ -115,7 +115,7 @@ def sflu_mirror_results(sflu_mirror, pprint):
 
     M = edges.RPMirrorEdge(
         "M", Thr=paramsMirr.Thr,
-        suscept_m_N=lambda F_Hz: -1/(paramsMirr.M_kg * (2*np.pi*F_Hz)),
+        suscept_m_N=lambda F_Hz: -1/(paramsMirr.M_kg * (2*np.pi*F_Hz)**2),
         lambda_m=paramsMirr.lambda_m,
     )
     mlib = M.mlib

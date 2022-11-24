@@ -140,10 +140,16 @@ def sflu_results(sflu_func, par, *args, **kwargs):
     sflu.reduce_auto()
 
     par = deepcopy(par)
-    mlib = MatrixLib()
+    mlib = MatrixLib(nhom=1)
     F_Hz = par.fmech_Hz
     re = np.sqrt(1 - par.Te - par.Lhr)
     te = np.sqrt(par.Te)
+    overlap = mlib.promote(
+        np.array([
+            [0, par.overlap],
+            [par.overlap, 0],
+        ])
+    )
     arm_gouy_rad = par.mode_order * gouyRT_rad(par.Larm_m, par.Ri_m, par.Re_m) / 2
     SEC_gouy_rad = par.mode_order * par.SEC_gouy_deg * np.pi/180
     PRC_gouy_rad = par.mode_order * par.PRC_gouy_deg * np.pi/180
@@ -154,38 +160,39 @@ def sflu_results(sflu_func, par, *args, **kwargs):
 
     EX = edges.RPMirrorEdge(
         "EX", Thr=par.Te, Lhr=par.Lhr,
-        suscept_m_N=suscept_m_N, overlap=par.overlap,
+        suscept_m_N=suscept_m_N, overlap=overlap,
+        mlib=mlib,
     )
 
     if sflu_func == sflu_FP:
         non_RP_optics = Struct(
-            IX  = edges.MirrorEdge("IX", Thr=par.Ti, Lhr=par.Lhr),
+            IX  = edges.MirrorEdge("IX", Thr=par.Ti, Lhr=par.Lhr, mlib=mlib),
         )
         links = Struct(
-            L_ARM = edges.LinkEdge("tau", par.Larm_m, 0 + arm_gouy_rad),
+            L_ARM = edges.LinkEdge("tau", par.Larm_m, 0, arm_gouy_rad, mlib=mlib),
         )
     elif sflu_func == sflu_DRFPMI:
         non_RP_optics = Struct(
-            IX  = edges.MirrorEdge("IX", Thr=par.Ti, Lhr=par.Lhr),
-            EY  = edges.MirrorEdge("EY", Thr=par.Te, Lhr=par.Lhr),
-            IY  = edges.MirrorEdge("IY", Thr=par.Ti, Lhr=par.Lhr),
-            BS  = edges.BSEdge("BS", Thr=par.Tbs, Lhr=0),
-            PRM = edges.MirrorEdge("PRM", Thr=par.Tp, Lhr=0),
-            SEM = edges.MirrorEdge("SEM", Thr=par.Ts, Lhr=0),
+            IX  = edges.MirrorEdge("IX", Thr=par.Ti, Lhr=par.Lhr, mlib=mlib),
+            EY  = edges.MirrorEdge("EY", Thr=par.Te, Lhr=par.Lhr, mlib=mlib),
+            IY  = edges.MirrorEdge("IY", Thr=par.Ti, Lhr=par.Lhr, mlib=mlib),
+            BS  = edges.BSEdge("BS", Thr=par.Tbs, Lhr=0, mlib=mlib),
+            PRM = edges.MirrorEdge("PRM", Thr=par.Tp, Lhr=0, mlib=mlib),
+            SEM = edges.MirrorEdge("SEM", Thr=par.Ts, Lhr=0, mlib=mlib),
         )
 
         links = Struct(
-            L_XARM = edges.LinkEdge("XARM.tau", par.Larm_m, 0 + arm_gouy_rad),
-            L_YARM = edges.LinkEdge("YARM.tau", par.Larm_m, 0 + arm_gouy_rad),
-            L_BSX  = edges.LinkEdge("BSX.tau", 0, 0 + 0),
-            L_BSY  = edges.LinkEdge("BSY.tau", 0, 0 + 0),
-            L_PRC  = edges.LinkEdge("PRC.tau", par.Lprc_m, 0 + PRC_gouy_rad),
-            L_SEC  = edges.LinkEdge("SEC.tau", par.Lsec_m, np.pi/2 + SEC_gouy_rad),
+            L_XARM = edges.LinkEdge("XARM.tau", par.Larm_m, 0, arm_gouy_rad, mlib=mlib),
+            L_YARM = edges.LinkEdge("YARM.tau", par.Larm_m, 0, arm_gouy_rad, mlib=mlib),
+            L_BSX  = edges.LinkEdge("BSX.tau", 0, 0, 0, mlib=mlib),
+            L_BSY  = edges.LinkEdge("BSY.tau", 0, 0, 0, mlib=mlib),
+            L_PRC  = edges.LinkEdge("PRC.tau", par.Lprc_m, 0, PRC_gouy_rad, mlib=mlib),
+            L_SEC  = edges.LinkEdge("SEC.tau", par.Lsec_m, np.pi/2, SEC_gouy_rad, mlib=mlib),
         )
 
     edge_map = {
         "1": mlib.Id,
-        "1s": np.eye((1)),
+        "1s": mlib.Id_s,
     }
 
     fieldsDC_fr_i = np.sqrt(par.Parm_W) * mlib.LO(np.pi/2)

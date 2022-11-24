@@ -1,5 +1,5 @@
 import numpy as np
-
+from scipy.linalg import block_diag
 
 def Minv(M):
     return np.linalg.inv(M)
@@ -139,33 +139,46 @@ class MatrixLib:
     """
     def __init__(self, nhom=0):
         self._nhom = nhom
-        self._dim = 2 * (1 + nhom)
+
+    @property
+    def nhom(self):
+        """
+        Number of HOMs
+        """
+        return self._nhom
+
+    @property
+    def dim(self):
+        """
+        Dimension of the vector space: 2 * (nhom + 1)
+        """
+        return 2 * (self.nhom + 1)
 
     @property
     def zeros(self):
         """
-        (ndim, ndim) zero matrix
+        (dim, dim) zero matrix
         """
-        return np.zeros((self._dim, self._dim))
+        return np.zeros((self.dim, self.dim))
 
     @property
     def Id(self):
         """
-        (ndim, ndim) identity matrix
+        (dim, dim) identity matrix
         """
-        return np.eye(self._dim)
+        return np.eye(self.dim)
 
     @property
     def Id_v(self):
         """
-        (ndim, 1) identity vector
+        (dim, 1) identity vector
         """
-        return np.ones((self._dim, 1))
+        return np.ones((self.dim, 1))
 
     @property
     def Id_a(self):
         """
-        (1, ndim) adjoint identity vector
+        (1, dim) adjoint identity vector
         """
         return adjoint(self.Id_v)
 
@@ -191,7 +204,7 @@ class MatrixLib:
 
         Returns
         -------
-        M : (ndim, ndim) matrix
+        M : (dim, dim) matrix
           The rotation matrix
 
         Examples
@@ -204,9 +217,9 @@ class MatrixLib:
         >>> mlib.Mrotation(np.pi/6, np.pi/4, np.pi/2)
         """
         if len(psi) == 0:
-            psi = np.zeros(self._nhom)
+            psi = np.zeros(self.nhom)
         else:
-            assert len(psi) == self._nhom
+            assert len(psi) == self.nhom
         thetas = np.hstack(([0], psi)) + phi
         M = self.zeros
         for ii, theta in enumerate(thetas):
@@ -224,9 +237,9 @@ class MatrixLib:
 
         Returns
         -------
-        M : (ndim, ndim) or (N, ndim, ndim) array
+        M : (dim, dim) or (N, dim, dim) array
         """
-        return matrix_stack_id(val, self._dim)
+        return matrix_stack_id(val, self.dim)
 
     def SQZ(self, sqzV, asqzV):
         """
@@ -241,7 +254,7 @@ class MatrixLib:
 
         Returns
         -------
-        S : (ndim, ndim) array
+        S : (dim, dim) array
           Squeeze matrix for the fundamental mode
 
         Examples
@@ -266,7 +279,7 @@ class MatrixLib:
 
         Returns
         -------
-        v : (ndim, 1) array
+        v : (dim, 1) array
         """
         M = 0 * self.Id_v
         M[:2, 0] = [np.sin(phi), np.cos(phi)]
@@ -283,10 +296,27 @@ class MatrixLib:
 
         Returns
         -------
-        M : (N, ndim, ndim) array
+        M : (N, dim, dim) array
         """
         M = self.Id
         M[:2, :2] = RPNK2(K)
+        return M
+
+    def block_diag(self, val, dtype=float):
+        """
+        Construct a block diagonal matrix
+        """
+        assert val.shape == (2, 2)
+        M = np.zeros((self.dim, self.dim), dtype=dtype)
+        for ii in range(self._nhom + 1):
+            M[(2 * ii):(2 * ii + 2), (2 * ii):(2 * ii + 2)] = val
+        return M
+
+    def promote(self, mat):
+        assert mat.shape == (self.nhom + 1, self.nhom + 1)
+        M = self.zeros
+        for (ri, ci), x in np.ndenumerate(mat):
+            M[(2 * ri):(2 * ri + 2), (2 * ci):(2 * ci + 2)] = x * np.eye(2)
         return M
 
     @classmethod
@@ -303,12 +333,9 @@ class MatrixLib:
 
         Returns
         -------
-        A : (ndim, ndim) array
+        A : (dim, dim) array
         """
-        M = np.zeros((self._dim, self._dim), dtype=complex)
-        for ii in range(self._nhom + 1):
-            M[(2 * ii):(2 * ii + 2), (2 * ii):(2 * ii + 2)] = A2
-        return M
+        return self.block_diag(A2, dtype=complex)
 
     @property
     def Ai(self):
@@ -317,9 +344,6 @@ class MatrixLib:
 
         Returns
         -------
-        Ai : (ndim, ndim) array
+        Ai : (dim, dim) array
         """
-        M = np.zeros((self._dim, self._dim), dtype=complex)
-        for ii in range(self._nhom + 1):
-            M[(2 * ii):(2 * ii + 2), (2 * ii):(2 * ii + 2)] = A2i
-        return M
+        return self.block_diag(A2i, dtype=complex)
