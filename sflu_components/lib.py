@@ -195,7 +195,7 @@ class MatrixLib:
 
         Parameters
         ----------
-        phi : float
+        phi : float or (N,) array
           Common rotation angle [rad]
         *psi : list of floats or (N,) arrays, optional
           Extra Gouy phases for each HOM [rad]
@@ -221,17 +221,19 @@ class MatrixLib:
         >>> psi = np.array([30, 45, 60]) * np.pi/180
         >>> mlib.Mrotation(np.pi/6, psi)
         """
+        phis = [np.atleast_1d(phi)] * (self.nhom + 1)
         if len(psi) == 0:
             # psi = np.zeros(self.nhom)
-            thetas = [np.array(0)] * (self.nhom + 1)
+            thetas = [np.zeros_like(phis[0])] * (self.nhom + 1)
         else:
             assert len(psi) == self.nhom
-            thetas = [np.zeros_like(psi[0])] + list(psi)
-        M = np.zeros(thetas[0].shape + (self.dim, self.dim))
-        for ii, theta in enumerate(thetas):
+            thetas = [np.zeros_like(np.atleast_1d(psi[0]))] + list(psi)
+        max_dim = max(len(phis[0]), len(thetas[0]))
+        M = np.zeros((max_dim, self.dim, self.dim))
+        for ii, (phi, theta) in enumerate(zip(phis, thetas)):
             inds = slice(2 * ii, 2 * ii + 2)
             M[..., inds, inds] = Mrotation2(phi + theta)
-        return M
+        return M.squeeze()
 
     def diag(self, val):
         """
