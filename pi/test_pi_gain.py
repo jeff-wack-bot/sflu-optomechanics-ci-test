@@ -144,12 +144,11 @@ def sflu_results(sflu_func, par, *args, **kwargs):
     F_Hz = par.fmech_Hz
     re = np.sqrt(1 - par.Te - par.Lhr)
     te = np.sqrt(par.Te)
-    overlap = mlib.promote(
-        np.array([
-            [0, par.overlap],
-            [par.overlap, 0],
-        ])
-    )
+    overlap = np.array([
+        [0, par.overlap],
+        [par.overlap, 0],
+    ])
+
     arm_gouy_rad = par.mode_order * gouyRT_rad(par.Larm_m, par.Ri_m, par.Re_m) / 2
     SEC_gouy_rad = par.mode_order * par.SEC_gouy_deg * np.pi/180
     PRC_gouy_rad = par.mode_order * par.PRC_gouy_deg * np.pi/180

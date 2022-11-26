@@ -165,13 +165,8 @@ class RPMirrorEdge:
         self.r = np.sqrt(1 - Thr - Lhr - Rar)
         self.suscept_m_N = suscept_m_N
         self.lambda_m = lambda_m
-        self.overlap = overlap
+        self.overlap = mlib.promote(overlap)
         self.mlib = mlib
-
-        if np.isscalar(overlap):
-            self.overlap = overlap * mlib.Id
-        else:
-            self.overlap = overlap
 
     def _optic_edges(self):
         t = self.mlib.diag(self.t)
