@@ -250,6 +250,70 @@ def test_gain_single(sflu_func, ref_gain, pprint):
     assert np.isclose(gain, ref_gain.gain)
 
 
+def test_multiple_gouys(pprint):
+    sflu = sflu_FP()
+    sflu.reduce_auto()
+
+    # par = deepcopy(par)
+    mlib = MatrixLib(nhom=1)
+    F_Hz = par.fmech_Hz
+    re = np.sqrt(1 - par.Te - par.Lhr)
+    te = np.sqrt(par.Te)
+    overlap = mlib.promote(
+        np.array([
+            [0, par.overlap],
+            [par.overlap, 0],
+        ])
+    )
+    Ri_m = par.Ri_m * (1 + np.array([0, 1e-3, 1e-2]))
+    Re_m = par.Re_m * (1 + np.array([0, 1e-3, 1e-2]))
+    arm_gouy_rad = par.mode_order * gouyRT_rad(par.Larm_m, Ri_m, Re_m) / 2
+    def suscept_m_N(F_Hz):
+        den = par.fmech_Hz**2 - F_Hz**2 + 1j * par.fmech_Hz * F_Hz / par.Qm
+        return 1 / par.M_kg / (2 * np.pi)**2 / den
+
+    IX  = edges.MirrorEdge("IX", Thr=par.Ti, Lhr=par.Lhr, mlib=mlib)
+    L_ARM = edges.LinkEdge("tau", par.Larm_m, 0, [arm_gouy_rad], mlib=mlib)
+    EX = edges.RPMirrorEdge(
+        "EX", Thr=par.Te, Lhr=par.Lhr,
+        suscept_m_N=suscept_m_N, overlap=overlap,
+        mlib=mlib,
+    )
+
+    edge_map = {
+        "1": mlib.Id,
+        "1s": mlib.Id_s,
+    }
+
+    fieldsDC_fr_i = np.sqrt(par.Parm_W) * mlib.LO(np.pi/2)
+    fieldsDC_fr_o = -re * fieldsDC_fr_i
+    fieldsDC_bk_o = te * fieldsDC_fr_i
+    fieldsDC_bk_i = 0 * mlib.Id_v
+
+    resultsDC = {
+        "EX.fr.i.tp": fieldsDC_fr_i,
+        "EX.fr.o.tp": fieldsDC_fr_o,
+        "EX.bk.i.tp": fieldsDC_bk_i,
+        "EX.bk.o.tp": fieldsDC_bk_o,
+    }
+
+    edge_map.update(IX.edgesAC(F_Hz, resultsDC))
+    edge_map.update(EX.edgesAC(F_Hz, resultsDC))
+    edge_map.update(L_ARM.edgesAC(F_Hz, resultsDC))
+
+    comp = sflu.computer()
+    comp.compute(edge_map=edge_map)
+    results = comp.inverse_row(
+        {"EX.pos.tp": None},
+        {"EX.pos.exc"},
+    )
+
+    cl = results['EX.pos.exc']
+    gain = np.real(1 - 1/cl)
+    print("closed loop:", cl)
+    print("gain:", gain)
+
+
 @pytest.mark.parametrize('sflu_func', [sflu_FP, sflu_DRFPMI])
 def plot_graph(sflu_func, tpath_join):
     sflu = sflu_func()

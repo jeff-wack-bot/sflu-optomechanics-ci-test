@@ -197,14 +197,14 @@ class MatrixLib:
         ----------
         phi : float
           Common rotation angle [rad]
-        *psi : list of floats, optional
+        *psi : list of floats or (N,) arrays, optional
           Extra Gouy phases for each HOM [rad]
           Defaults to zero if none are given. If any Gouy phases are specified
           they all must be specified
 
         Returns
         -------
-        M : (dim, dim) matrix
+        M : (dim, dim) or (N, dim, dim) matrix
           The rotation matrix
 
         Examples
@@ -215,15 +215,22 @@ class MatrixLib:
 
         Rotate by pi/6 and Gouy phases pi/4 and pi/2
         >>> mlib.Mrotation(np.pi/6, np.pi/4, np.pi/2)
+
+        Rotate the fundamental by pi/6 and a single HOM by 30, 45, and 60 deg
+        >>> mlib = MatrixLib(nhom=1)
+        >>> psi = np.array([30, 45, 60]) * np.pi/180
+        >>> mlib.Mrotation(np.pi/6, psi)
         """
         if len(psi) == 0:
-            psi = np.zeros(self.nhom)
+            # psi = np.zeros(self.nhom)
+            thetas = [np.array(0)] * (self.nhom + 1)
         else:
             assert len(psi) == self.nhom
-        thetas = np.hstack(([0], psi)) + phi
-        M = self.zeros
+            thetas = [np.zeros_like(psi[0])] + list(psi)
+        M = np.zeros(thetas[0].shape + (self.dim, self.dim))
         for ii, theta in enumerate(thetas):
-            M[(2 * ii):(2 * ii + 2), (2 * ii):(2 * ii + 2)] = Mrotation2(theta)
+            inds = slice(2 * ii, 2 * ii + 2)
+            M[..., inds, inds] = Mrotation2(phi + theta)
         return M
 
     def diag(self, val):
@@ -309,7 +316,8 @@ class MatrixLib:
         assert val.shape == (2, 2)
         M = np.zeros((self.dim, self.dim), dtype=dtype)
         for ii in range(self._nhom + 1):
-            M[(2 * ii):(2 * ii + 2), (2 * ii):(2 * ii + 2)] = val
+            inds = slice(2 * ii, 2 * ii + 2)
+            M[inds, inds] = val
         return M
 
     def promote(self, mat):
