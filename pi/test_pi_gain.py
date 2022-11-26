@@ -153,13 +153,13 @@ def sflu_results(sflu_func, par, *args, **kwargs):
     SEC_gouy_rad = par.mode_order * par.SEC_gouy_deg * np.pi/180
     PRC_gouy_rad = par.mode_order * par.PRC_gouy_deg * np.pi/180
 
-    def suscept_m_N(F_Hz):
+    def suscept(F_Hz):
         den = par.fmech_Hz**2 - F_Hz**2 + 1j * par.fmech_Hz * F_Hz / par.Qm
         return 1 / par.M_kg / (2 * np.pi)**2 / den
 
     EX = edges.RPMirrorEdge(
         "EX", Thr=par.Te, Lhr=par.Lhr,
-        suscept_m_N=suscept_m_N, overlap=overlap,
+        suscept=suscept, overlap=overlap,
         mlib=mlib,
     )
 
@@ -267,7 +267,7 @@ def test_multiple_gouys(pprint):
     Ri_m = par.Ri_m * (1 + np.array([0, 1e-3, 1e-2]))
     Re_m = par.Re_m * (1 + np.array([0, 1e-3, 1e-2]))
     arm_gouy_rad = par.mode_order * gouyRT_rad(par.Larm_m, Ri_m, Re_m) / 2
-    def suscept_m_N(F_Hz):
+    def suscept(F_Hz):
         den = par.fmech_Hz**2 - F_Hz**2 + 1j * par.fmech_Hz * F_Hz / par.Qm
         return 1 / par.M_kg / (2 * np.pi)**2 / den
 
@@ -275,7 +275,7 @@ def test_multiple_gouys(pprint):
     L_ARM = edges.LinkEdge("tau", par.Larm_m, 0, [arm_gouy_rad], mlib=mlib)
     EX = edges.RPMirrorEdge(
         "EX", Thr=par.Te, Lhr=par.Lhr,
-        suscept_m_N=suscept_m_N, overlap=overlap,
+        suscept=suscept, overlap=overlap,
         mlib=mlib,
     )
 

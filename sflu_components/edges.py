@@ -100,6 +100,25 @@ class BSEdge:
 class LinkEdge:
     """
     Defines DC and AC edges for propagation links
+
+    Parameters
+    ----------
+    name : str
+      Name of the link
+    L_m: float
+      Macroscopic length of the link [m]
+    detune_rad : float, optional
+      Common microscopic detuning of all fields [rad], 0 by default
+    gouy_rad : nhom element list of scalars or (N,) arrays, optional
+      Gouy phases for each HOM [rad], all 0 by default
+    MM_fr : scalar or (dim, dim) array, optional
+      Mode matching basis transformation at the beginning of the link,
+      (dim, dim) identity by default
+    MM_to : scalar or (dim, dim) array, optional
+      Mode matching basis transformation at the end of the link,
+      (dim, dim) identity by default
+    mlib : MatrixLib instance, optional
+      MatrixLib to use for calculations, MatrixLib(nhom=0) by default
     """
     def __init__(
             self,
@@ -107,11 +126,15 @@ class LinkEdge:
             L_m,
             detune_rad=0,
             gouy_rad=None,
+            MM_fr=1,
+            MM_to=1,
             mlib=MatrixLib(nhom=0),
     ):
         self.name = name
         self.L_m = L_m
         self.detune_rad = detune_rad
+        self.MM_fr = mlib.promote(MM_fr)
+        self.MM_to = mlib.promote(MM_to)
         self.mlib = mlib
 
         if gouy_rad is None:
@@ -126,7 +149,7 @@ class LinkEdge:
 
     def _edges(self, Lmat):
         edge_map = {
-            self.name: Lmat,
+            self.name: self.MM_to @ Lmat @ self.MM_fr,
         }
         return edge_map
 
@@ -149,13 +172,54 @@ class LinkEdge:
 
 
 class RPMirrorEdge:
+    """
+    Defines DC and AC edges for mirrors with radiation pressure
+
+    Parameters
+    ----------
+    name : str
+      Name of the mirror
+    Thr : float, optional
+      Transmissivity of the HR surface, 0 by default
+    Lhr : float, optional
+      Loss of the HR surface, 0 by default
+    Rar : float, optional
+      Reflectivity of the AR surface, 0 by default
+    suscept : callable, optional
+      Mechanical susceptibility as a function of frequency in Hz, 0 by default
+    lambda_m : float, optional
+      Wavelength [m], 1064e-9 by default
+    overlap : scalar, (nhom + 1, nhom + 1) matrix, or (dim, dim) matrix
+      Matrix of overlap integrals between optical and mechanical modes,
+      (dim, dim) identity by default
+    mlib : MatrixLib instance, optional
+      MatrixLib to use for calculations, MatrixLib(nhom=0) by default
+
+    Examples
+    --------
+    5 ppm transmissive free mass mirror of mass M_kg
+    >>> suscept = lambda F_Hz: -1 / (M_kg * (2 * np.pi * F_Hz)**2)
+    >>> mirr = RPMirrorEdge('M', Thr=5e-6, suscept=suscept)
+
+    Bulk mode of a M_kg mass mirror with mechanical frequency Fm_Hz,
+    mechanical Q of Qm, and mode overlap integrals Bnm for one HOM
+    >>> def suscept(F_Hz):
+            den = Fm_Hz**2 - F_Hz**2 + 1j * Fm_Hz * F_Hz / Qm
+            return 1 / (M_kg * (2 * np.pi)**2 * den)
+    >>> overlap = np.array([
+            [B00, B01],
+            [B01, B11],
+        ])
+    >>> mlib = MatrixLib(nhom=1)
+    >>> mirr = RPMirrorEdge('M', suscept=suscept, overlap=overlap, mlib=mlib)
+    """
     def __init__(
             self,
             name,
             Thr=0,
             Lhr=0,
             Rar=0,
-            suscept_m_N=lambda x: np.zeroslike(x),
+            suscept=lambda x: np.zeroslike(x),
             lambda_m=1064e-9,
             overlap=1,
             mlib=MatrixLib(nhom=0),
@@ -163,7 +227,7 @@ class RPMirrorEdge:
         self.name = name
         self.t = np.sqrt(Thr)
         self.r = np.sqrt(1 - Thr - Lhr - Rar)
-        self.suscept_m_N = suscept_m_N
+        self.suscept = suscept
         self.lambda_m = lambda_m
         self.overlap = mlib.promote(overlap)
         self.mlib = mlib
@@ -214,7 +278,7 @@ class RPMirrorEdge:
         px_bk = px @ self.mlib.Mrotation(np.pi/2) @ fieldsDC_bk_i
 
         # mechanical susceptibility, reshaped for multiplication
-        chi = self.suscept_m_N(F_Hz)
+        chi = self.suscept(F_Hz)
         if np.isscalar(chi):
             chi = chi * self.mlib.Id_s
         else:

@@ -115,7 +115,7 @@ def sflu_mirror_results(sflu_mirror, pprint):
 
     M = edges.RPMirrorEdge(
         "M", Thr=paramsMirr.Thr,
-        suscept_m_N=lambda F_Hz: -1/(paramsMirr.M_kg * (2*np.pi*F_Hz)**2),
+        suscept=lambda F_Hz: -1/(paramsMirr.M_kg * (2*np.pi*F_Hz)**2),
         lambda_m=paramsMirr.lambda_m,
     )
     mlib = M.mlib
@@ -267,7 +267,7 @@ def sflu_OS_results(sflu_OS, pprint):
     IX = edges.MirrorEdge("IX", Thr=paramsOS.Ti)
     EX = edges.RPMirrorEdge(
         "EX", Thr=paramsOS.Te,
-        suscept_m_N=lambda F_Hz: -1/(paramsOS.M_kg * (2*np.pi*F_Hz)**2),
+        suscept=lambda F_Hz: -1/(paramsOS.M_kg * (2*np.pi*F_Hz)**2),
     )
     ArmLink = edges.LinkEdge(
         "tau", L_m=paramsOS.Larm_m,
