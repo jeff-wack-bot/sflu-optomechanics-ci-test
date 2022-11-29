@@ -237,23 +237,42 @@ class MatrixLib:
             M[..., inds, inds] = Mrotation2(phi + theta)
         return M.squeeze()
 
-    def MrotationMM(self, L, psi, inv):
+    def MrotationMM(self, L, psi, inv=False):
+        """
+        Mode mismatch matrix
+
+        Currently only mismatch between the fundamental and HOMs is implemented.
+        No conversion between HOMs is included.
+
+        Parameters
+        ----------
+        L : float (for a single HOM) or (nhom,) array
+          Power loss from the fundamental to each HOM
+        psi : float (for a single HOM) or (nhom,) array
+          Mismatch phase for each mismatch [rad]
+
+        Returns
+        -------
+        M : (dim, dim) matrix
+          The mismatch matrix
+        """
         if self.nhom == 0:
             raise ValueError('need at least one HOM for mismatch')
         L_arr = np.atleast_1d(L)
         psi_arr = np.atleast_1d(psi)
-        inv_sign = (-1)**np.atleast_1d(inv)
-        for var in [L_arr, psi_arr, inv_sign]:
+        for var in [L_arr, psi_arr]:
             if len(var) != self.nhom:
                 raise ValueError('mismatch data needed for all HOMs')
 
         M = self.zeros
         M[:2, :2] = np.sqrt(1 - np.sum(L_arr)) * np.eye(2)
-        for ii, (L, psi, ss) in enumerate(zip(L_arr, psi_arr, inv_sign)):
+        for ii, (L, psi) in enumerate(zip(L_arr, psi_arr)):
             inds = slice(2 * (ii + 1), 2 * (ii + 2))
-            M[:2, inds] = -ss * np.sqrt(L) * Mrotation2(-psi)
-            M[inds, :2] = ss * np.sqrt(L) * Mrotation2(psi)
+            M[:2, inds] = -np.sqrt(L) * Mrotation2(psi)
+            M[inds, :2] = np.sqrt(L) * Mrotation2(-psi)
             M[inds, inds] = np.sqrt(1 - L) * np.eye(2)
+        if inv is True:
+            M = Minv(M)
         return M
 
     def diag(self, val):
