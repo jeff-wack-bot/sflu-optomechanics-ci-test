@@ -84,6 +84,9 @@ def matrix_stack(arr, dtype = None, **kwargs):
 
 
 def matrix_stack_id(value, dim, **kwargs):
+    """
+    This only works for dim < 6, otherwise matrix_stack is unhappy
+    """
     arr = [value] * dim
     arrs = []
     for idx, a in enumerate(arr):
@@ -288,7 +291,8 @@ class MatrixLib:
         -------
         M : (dim, dim) or (N, dim, dim) array
         """
-        return matrix_stack_id(val, self.dim)
+        # return matrix_stack_id(val, self.dim)
+        return np.einsum('...,ij', val, self.Id)
 
     def SQZ(self, sqzV, asqzV):
         """
