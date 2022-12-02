@@ -1,10 +1,10 @@
 import numpy as np
 from wavestate.control.SFLU import SFLU, optics, nx2tikz
 from sflu_components import elements, edges
-from sflu_components.lib import MatrixLib, adjoint, Vnorm_sq
+from sflu_components.lib import MatrixLib, adjoint, Vnorm_sq, Minv
 from gwinc.struct import Struct
 from gwinc import load_budget
-from gwinc.plant import plant_debug
+from gwinc.plant import plant_debug, arm_gouyRT
 from copy import deepcopy
 
 
@@ -68,13 +68,13 @@ def sflu_DRFPMI():
     ifo.edges.update({
         ("EX.fr.i", "IX.fr.o"): "XARM.L",
         ("IX.fr.i", "EX.fr.o"): "XARM.L",
-        ("IX.bk.i", "BS.bkA.o"): "BSX.L.i",
-        ("BS.bkA.i", "IX.bk.o"): "BSX.L.o",
+        ("IX.bk.i", "BS.bkA.o"): "BSX.L.to",
+        ("BS.bkA.i", "IX.bk.o"): "BSX.L.fr",
 
         ("EY.fr.i", "IY.fr.o"): "YARM.L",
         ("IY.fr.i", "EY.fr.o"): "YARM.L",
-        ("IY.bk.i", "BS.frB.o"): "BSY.L.i",
-        ("BS.frB.i", "IY.bk.o"): "BSY.L.o",
+        ("IY.bk.i", "BS.frB.o"): "BSY.L.to",
+        ("BS.frB.i", "IY.bk.o"): "BSY.L.fr",
 
         ("PRM.fr.i", "BS.frA.o"): "PRC.L",
         ("BS.frA.i", "PRM.fr.o"): "PRC.L",
@@ -141,7 +141,8 @@ def test_DRFPMI(tpath_join, plotTF, pprint):
     F_Hz = np.logspace(0, 4, 2000)
     ifo.Optics.Loss = 0
     ifo.Optics.BSLoss = 0
-    mats, access = plant_debug(F_Hz, ifo)
+    ifo.Suspension.RPdynamics = 'FreeMass'
+    _, access = plant_debug(F_Hz, ifo)
     Ti = ifo.Optics.ITM.Transmittance  # 0.014
     Te = ifo.Optics.ETM.Transmittance  # 10e-6
     Tp = ifo.Optics.PRM.Transmittance  # 0.03
@@ -156,17 +157,56 @@ def test_DRFPMI(tpath_join, plotTF, pprint):
     Ls_m = Lsec_m - Lavg_m
     Lp_m = Lprc_m - Lavg_m
     M_kg = 40
-    ARM_gouy_rad = None  # -23 * np.pi/180
-    SEC_gouy_rad = None  # 19 * np.pi/180
-    PRC_gouy_rad = None  # 25 * np.pi/180
+
+    nhom = 1
+    mlib = MatrixLib(nhom=nhom)
+    mode_order = np.arange(1, nhom + 1)
+    # ARM_gouy_rad = -23 * np.pi/180 * mode_order
+    ARM_gouy_rad = arm_gouyRT(
+        ifo.Optics.Curvature.ITM,
+        ifo.Infrastructure.Length,
+        ifo.Optics.Curvature.ETM,
+    )
+    if nhom > 1:
+        ARM_gouy_rad *= mode_order
+    SEC_gouy_rad = 19 * np.pi/180 * mode_order
+    PRC_gouy_rad = 25 * np.pi/180 * mode_order
     SEC_detune_rad = 0
     Parm_W = access.drfpmi.parm_W
-    mlib = MatrixLib(nhom=0)
+
+    if nhom > 0:
+        MM_SEC_XARM_L = np.linspace(0.001, 0.005, nhom)
+        MM_SEC_XARM_rad = np.linspace(0, 90, nhom) * np.pi/180
+        MM_XARM_YARM_L = MM_SEC_XARM_L
+        MM_XARM_YARM_rad = np.zeros_like(MM_SEC_XARM_rad)
+    else:
+        MM_SEC_XARM_L = 0
+        MM_XARM_YARM_L = 0
+        MM_SEC_XARM_rad = 0
+        MM_XARM_YARM_rad = 0
+
+    if nhom == 1:
+        ifo.Optics.MM_ARM_SRC = MM_SEC_XARM_L
+        ifo.Optics.MM_ARM_SRCphi = MM_SEC_XARM_rad
+        ifo.Optics.MM_XARM_YARM = MM_XARM_YARM_L
+        ifo.Optics.MM_XARM_YARMphi = MM_XARM_YARM_rad
+        ifo.Optics.SRM.SRCGouy_rad = SEC_gouy_rad
+        ifo.Optics.PRM.PRCGouy_rad = PRC_gouy_rad
+
+
+    pprint(ARM_gouy_rad)
+    pprint(access.arm.ret.ARM_gouy_rad)
+    pprint(access.arm.ret.ARM_gouy_rad - ARM_gouy_rad)
+
+    MM_SEC_XARM = mlib.MrotationMM(MM_SEC_XARM_L, MM_SEC_XARM_rad)
+    MM_XARM_YARM = mlib.MrotationMM(MM_XARM_YARM_L, MM_XARM_YARM_rad)
+    MM_SEC_YARM = MM_SEC_XARM @ MM_XARM_YARM
 
     SEC_detune_rad = np.pi/2 + SEC_detune_rad
 
     def suscept(F_Hz):
-        return -1 / (M_kg * (2 * np.pi * F_Hz)**2)
+        # return -1 / (M_kg * (2 * np.pi * F_Hz)**2)
+        return access.drfpmi.tst_suscept
 
     edge_objs = Struct()
     for opt_name in ['EX', 'EY']:
@@ -205,24 +245,28 @@ def test_DRFPMI(tpath_join, plotTF, pprint):
             gouy_rad=ARM_gouy_rad,
             mlib=mlib,
         )
-    edge_objs['L_BSX_o'] = edges.LinkEdge(
-        'BSX.L.o',
+    edge_objs['L_BSX_to'] = edges.LinkEdge(
+        'BSX.L.to',
         L_m=Lbsx_m,
+        MM_to=MM_SEC_XARM,
         mlib=mlib,
     )
-    edge_objs['L_BSX_i'] = edges.LinkEdge(
-        'BSX.L.i',
+    edge_objs['L_BSX_fr'] = edges.LinkEdge(
+        'BSX.L.fr',
         L_m=Lbsx_m,
+        MM_fr=Minv(MM_SEC_XARM),
         mlib=mlib,
     )
-    edge_objs['L_BSY_o'] = edges.LinkEdge(
-        'BSY.L.o',
+    edge_objs['L_BSY_to'] = edges.LinkEdge(
+        'BSY.L.to',
         L_m=Lbsy_m,
+        MM_to=MM_SEC_YARM,
         mlib=mlib,
     )
-    edge_objs['L_BSY_i'] = edges.LinkEdge(
-        'BSY.L.i',
+    edge_objs['L_BSY_fr'] = edges.LinkEdge(
+        'BSY.L.fr',
         L_m=Lbsy_m,
+        MM_fr=Minv(MM_SEC_YARM),
         mlib=mlib,
     )
     edge_objs['SEC'] = edges.LinkEdge(
@@ -277,14 +321,25 @@ def test_DRFPMI(tpath_join, plotTF, pprint):
     power_correction = np.sqrt(Parm_W / avg_arm_power)
     for k, v in resultsDC.items():
         resultsDC[k] = v * power_correction
+    approx_rp = False
+    if approx_rp:
+        resultsDC["IX.bk.i.tp"] *= 0
+        resultsDC["IX.bk.o.tp"] *= 0
+        resultsDC["IY.bk.i.tp"] *= 0
+        resultsDC["IY.bk.o.tp"] *= 0
     pprint('Xarm power: {:0.1f} kW'.format(
         Vnorm_sq(resultsDC["EX.fr.i.tp"]) * 1e-3))
     pprint('Yarm power: {:0.1f} kW'.format(
         Vnorm_sq(resultsDC["EY.fr.i.tp"]) * 1e-3))
 
     edgesAC = deepcopy(edge_map)
-    for edge_obj in edge_objs.values():
-        edgesAC.update(edge_obj.edgesAC(F_Hz, resultsDC))
+    for nn, edge_obj in edge_objs.items():
+        try:
+            edgesAC.update(edge_obj.edgesAC(F_Hz, resultsDC))
+        except ValueError as err:
+            pprint(nn)
+            traceback.print_exc()
+            raise err
 
     compAC = sflu.computer(eye=mlib.Id)
     compAC.compute(edge_map=edgesAC)
@@ -298,25 +353,34 @@ def test_DRFPMI(tpath_join, plotTF, pprint):
     )
 
     LOa = adjoint(mlib.LO(0))
-    LOdotArmPhase = (LOa @ mats.H['ArmTrans'])[..., 0, 1]
-    BS_factor = 1/np.sqrt(2)
-    k_ = 2*np.pi/1064e-9
-    d_sense = BS_factor * (2 * k_ * LOdotArmPhase * Parm_W**0.5)
-    reflSEC = access.sec.reflSRC[..., 1, 1]
+    pprint(LOa)
+    if nhom < 2:
+        calc_gwinc = True
+    else:
+        calc_gwinc = False
+    if calc_gwinc:
+        mats, access = plant_debug(F_Hz, ifo)
+        LOdotArmPhase = (LOa @ mats.H['ArmTrans'])[..., 0, 1]
+        BS_factor = 1/np.sqrt(2)
+        k_ = 2*np.pi/1064e-9
+        d_sense = BS_factor * (2 * k_ * LOdotArmPhase * Parm_W**0.5)
+        reflSEC = access.sec.reflSRC[..., 1, 1]
 
     plant = (resultsAC['EY.pos.exc'] - resultsAC['EX.pos.exc']) / 2
     plant = np.squeeze(LOa @ plant)
     reflIFO = resultsAC["SEM.bk.i.exc"][:, 1, 1]
 
     fig = plotTF(F_Hz, plant, label='SFLU')
-    plotTF(F_Hz, d_sense, *fig.axes, ls='--', label='gwinc')
+    if calc_gwinc:
+        plotTF(F_Hz, d_sense, *fig.axes, ls='--', label='gwinc')
     fig.axes[0].legend()
     fig.savefig(tpath_join('plant.pdf'))
 
     fig = plotTF(F_Hz, reflIFO, label='SFLU')
-    plotTF(F_Hz, reflSEC, *fig.axes, ls='--', label='gwinc')
+    if calc_gwinc:
+        plotTF(F_Hz, reflSEC, *fig.axes, ls='--', label='gwinc')
     fig.axes[0].legend()
-    fig.axes[0].set_ylim(0.5, 2)
+    # fig.axes[0].set_ylim(0.1, 10)
     fig.savefig(tpath_join('reflIFO.pdf'))
 
 
