@@ -141,8 +141,12 @@ class LinkEdge:
             self.gouy_rad = np.zeros(mlib.nhom)
         else:
             if np.isscalar(gouy_rad):
-                assert mlib.nhom == 1
-                self.gouy_rad = np.array([gouy_rad])
+                if mlib.nhom == 0:
+                    self.gouy_rad = np.zeros(0)
+                elif mlib.nhom == 1:
+                    self.gouy_rad = np.array([gouy_rad])
+                else:
+                    raise ValueError('need gouy_phases for all HOMs')
             else:
                 assert len(gouy_rad) == mlib.nhom
                 self.gouy_rad = gouy_rad
@@ -191,7 +195,7 @@ class RPMirrorEdge:
       Wavelength [m], 1064e-9 by default
     overlap : scalar, (nhom + 1, nhom + 1) matrix, or (dim, dim) matrix
       Matrix of overlap integrals between optical and mechanical modes,
-      (dim, dim) identity by default
+      1 by default
     mlib : MatrixLib instance, optional
       MatrixLib to use for calculations, MatrixLib(nhom=0) by default
 

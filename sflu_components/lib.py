@@ -1,8 +1,12 @@
 import numpy as np
 from scipy.linalg import block_diag
 
+
 def Minv(M):
-    return np.linalg.inv(M)
+    if np.ndim(M) < 2:
+        return 1 / M
+    else:
+        return np.linalg.inv(M)
 
 
 def transpose(M):
@@ -260,7 +264,10 @@ class MatrixLib:
           The mismatch matrix
         """
         if self.nhom == 0:
-            raise ValueError('need at least one HOM for mismatch')
+            if L != 0:
+                raise ValueError('need at least one HOM for mismatch')
+            return self.Id
+
         L_arr = np.atleast_1d(L)
         psi_arr = np.atleast_1d(psi)
         for var in [L_arr, psi_arr]:
