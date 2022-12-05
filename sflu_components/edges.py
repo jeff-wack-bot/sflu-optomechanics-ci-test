@@ -223,7 +223,7 @@ class RPMirrorEdge:
             Thr=0,
             Lhr=0,
             Rar=0,
-            suscept=lambda x: np.zeroslike(x),
+            suscept=lambda x: np.zeros_like(x),
             lambda_m=1064e-9,
             overlap=1,
             mlib=MatrixLib(nhom=0),

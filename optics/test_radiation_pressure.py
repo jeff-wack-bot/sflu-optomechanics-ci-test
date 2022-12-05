@@ -8,7 +8,7 @@ Test radiation pressure effects on a mirror
 import numpy as np
 from wavestate.control.SFLU import SFLU, optics, nx2tikz
 from sflu_components import elements, edges, simlib
-from sflu_components.lib import MatrixLib, adjoint, Vnorm_sq
+from sflu_components.lib import MatrixLib, adjoint, Vnorm_sq, transpose
 from gwinc.struct import Struct
 from copy import deepcopy
 import pytest
@@ -250,6 +250,8 @@ def sflu_OS():
         ("EX.bk.i", "EX.bk.i.exc"): "Lb",
         ("EX.bk.o.tp", "EX.bk.o"): "1",
     })
+    ifo["EX"].locations["fr.o.exc"] = (-3, -10)
+    ifo["EX"].edges[("fr.o", "fr.o.exc")] = "1"
 
     sflu = SFLU.SFLU(
         edges=ifo.build_edges(),
@@ -329,11 +331,17 @@ def sflu_OS_results(sflu_OS, pprint):
     compAC.compute(edge_map=edgesAC)
     resultsAC_opt = compAC.inverse_row(
         {"IX.bk.o.tp": None},
-        {"EX.pos.exc"},
+        {
+            "EX.pos.exc",
+            "EX.fr.o.exc",
+        },
     )
     resultsAC_mech = compAC.inverse_row(
         {"EX.pos.tp": None},
-        {"EX.pos.exc"},
+        {
+            "EX.pos.exc",
+            "EX.fr.o.exc",
+        },
     )
 
     return resultsDC, resultsAC_opt, resultsAC_mech
@@ -348,11 +356,21 @@ def test_sflu_OS(sflu_OS_results, tpath_join, pprint, plotTF):
     opt_tf = LOa @ resultsAC_opt["EX.pos.exc"]
     opt_tf = -opt_tf[..., 0, 0]
 
+    # works well with no back laser
+    fieldsDC_fr_i = mlib.Mrotation(np.pi/2) @ resultsDC["EX.fr.i.tp"]
+    ArmPhase = resultsAC_opt["EX.fr.o.exc"] @ fieldsDC_fr_i
+    pprint(ArmPhase.shape)
+    opt_tf_field = np.squeeze(LOa @ ArmPhase) * 4 * np.pi / paramsOS.lambda_m
+    opt_tf_field *= -2**(-1/2)
+    # LOdotArmPhase = (LOa @ ArmPhase)[..., 0, 1]
+    # opt_tf_field = 4 * np.pi / paramsOS.lambda_m * LOdotArmPhase
+
     chi = -1/(paramsOS.M_kg * (2*np.pi*F_Hz)**2)
     mech_tf = resultsAC_mech["EX.pos.exc"] * chi
     # mech_tf = resultsAC_mech["EX.fr.F.i.exc"][..., 0, 0]
 
     fig = plotTF(F_Hz, opt_tf, label="SFLU")
+    plotTF(F_Hz, opt_tf_field, *fig.axes, ls='--', label="SFLU field")
     fig.axes[0].legend()
     fig.axes[0].set_title("Phase response to mirror motion")
     fig.axes[0].set_ylabel("Magnitude [W/m]")
