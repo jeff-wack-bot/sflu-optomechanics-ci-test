@@ -44,6 +44,7 @@ def test_promote():
     mat2 = np.arange(1, 10).reshape(3, 3)
     M2a = mlib.promote(mat2)
     Id2 = np.eye(2)
+    zz2 = 0 * Id2
     M2b = np.block([
         [1 * Id2, 2 * Id2, 3 * Id2],
         [4 * Id2, 5 * Id2, 6 * Id2],
@@ -51,9 +52,18 @@ def test_promote():
     ])
     M3 = mlib.promote(M2a)
 
+    arr = np.arange(1, 4)
+    M3a = mlib.promote(arr)
+    M3b = np.block([
+        [1 * Id2, zz2, zz2],
+        [zz2, 2 * Id2, zz2],
+        [zz2, zz2, 3 * Id2],
+    ])
+
     assert np.all(M1a == M1b)
     assert np.all(M2a == M2b)
     assert np.all(M3 == M2a)
+    assert np.all(M3a == M3b)
 
 
 def test_A():

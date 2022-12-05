@@ -379,7 +379,7 @@ class MatrixLib:
 
         Parameters
         ----------
-        mat : scalar, (nhom + 1, nhom + 1) matrix, or (dim, dim) matrix
+        mat : scalar, (nhom + 1, nhom + 1) matrix, (dim, dim) matrix, or (nhom + 1,) array
 
         Returns
         -------
@@ -387,6 +387,8 @@ class MatrixLib:
             * if mat is a scalar, matrix with mat along the diagonal
             * if mat is an (nhom + 1, nhom + 1) matrix, a (dim, dim) block matrix
               with each 2x2 the corresponding matrix element of mat on the diagonal
+            * if mat is an (nhom + 1,) array, a (dim, dim) block diagonal matrix with
+              each block the corresponding 2x2 diagonal matrix
             * mat if mat is a (dim, dim) matrix
 
         Examples
@@ -403,6 +405,14 @@ class MatrixLib:
                 [3, 0, 4, 0],
                 [0, 3, 0, 4],
             ])
+        >>> arr = np.array([1, 2])
+        >>> mlib.promote(arr)
+            np.array([
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 2, 0],
+                [0, 0, 0, 2],
+            ])
         """
         if np.isscalar(mat):
             M = mat * self.Id
@@ -414,6 +424,11 @@ class MatrixLib:
                 M[row, col] = x * np.eye(2)
         elif mat.shape == (self.dim, self.dim):
             M = mat
+        elif mat.shape == (self.nhom + 1,):
+            M = self.zeros
+            for ii, x in enumerate(mat):
+                inds = slice(2 * ii, 2 * ii + 2)
+                M[inds, inds] = x * np.eye(2)
         else:
             raise ValueError("incorrect dimensions")
         return M
