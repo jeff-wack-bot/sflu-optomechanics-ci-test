@@ -18,9 +18,11 @@ class MirrorEdge:
             Rar=0,
             lambda_m=1064e-9,
             mlib=MatrixLib(nhom=0),
+            loss_ports=False,
     ):
         self.name = name
         self.t = mlib.promote(np.sqrt(Thr))
+        self.l = mlib.promote(np.sqrt(Lhr))
         self.r = mlib.promote(np.sqrt(
             mlib.Id
             - mlib.promote(Thr)
@@ -29,6 +31,7 @@ class MirrorEdge:
         ))
         self.lambda_m = lambda_m
         self.mlib = mlib
+        self._loss_ports = loss_ports
 
     def _optic_edges(self):
         edge_map = {
@@ -37,6 +40,11 @@ class MirrorEdge:
             self.name + ".fr.t": self.t,
             self.name + ".bk.t": self.t,
         }
+        if self._loss_ports:
+            edge_map.update({
+                self.name + ".fr.l": self.l,
+                self.name + ".bk.l": self.l,
+            })
         return edge_map
 
     def edgesDC(self):
@@ -58,7 +66,6 @@ class MirrorEdge:
         resultsDC: the dictionary of DC results
         """
         edge_map = self._optic_edges()
-
         # # DC fields at the mirror faces
         # def get_fieldsDC(tp):
         #     try:
@@ -78,7 +85,6 @@ class MirrorEdge:
         #     self.name + ".fr.px": px_fr,
         #     self.name + ".bk.px": px_bk,
         # })
-
         return edge_map
 
 
@@ -215,6 +221,9 @@ class RPMirrorEdge:
       1 by default
     mlib : MatrixLib instance, optional
       MatrixLib to use for calculations, MatrixLib(nhom=0) by default
+    loss_ports : bool, int, optional
+      Includes loss is always included by inclues the loss ports if True,
+      False by default
 
     Examples
     --------
@@ -244,9 +253,11 @@ class RPMirrorEdge:
             lambda_m=1064e-9,
             overlap=1,
             mlib=MatrixLib(nhom=0),
+            loss_ports=False,
     ):
         self.name = name
         self.t = mlib.promote(np.sqrt(Thr))
+        self.l = mlib.promote(np.sqrt(Lhr))
         self.r = mlib.promote(np.sqrt(
             mlib.Id
             - mlib.promote(Thr)
@@ -257,6 +268,7 @@ class RPMirrorEdge:
         self.lambda_m = lambda_m
         self.overlap = mlib.promote(overlap)
         self.mlib = mlib
+        self._loss_ports = loss_ports
 
     def _optic_edges(self):
         edge_map = {
@@ -264,7 +276,14 @@ class RPMirrorEdge:
             self.name + ".bk.r": +self.r,
             self.name + ".fr.t": self.t,
             self.name + ".bk.t": self.t,
+            self.name + ".fr.l": self.l,
+            self.name + ".bk.l": self.l,
         }
+        if self._loss_ports:
+            edges_map.update({
+                self.name + ".fr.l": self.l,
+                self.name + ".bk.l": self.l,
+            })
         return edge_map
 
     def edgesDC(self):

@@ -42,12 +42,12 @@ def sflu_DRFPMI():
         rotation_deg=0,
     )
     ifo.subgraph_add(
-        "PRM", optics.BasisMirror(),
+        "PRM", optics.LossyBasisMirror(),
         translation_xy=(-25, 0),
         rotation_deg=180,
     )
     ifo.subgraph_add(
-        "SEM", optics.BasisMirror(),
+        "SEM", optics.LossyBasisMirror(),
         translation_xy=(0, -25),
         rotation_deg=90+180,
     )
@@ -81,11 +81,11 @@ def sflu_DRFPMI():
         ("IY.bk.i", "BS.frB.o"): "BSY.L.to",
         ("BS.frB.i", "IY.bk.o"): "BSY.L.fr",
 
-        ("PRM.fr.i", "BS.frA.o"): "PRC.L",
-        ("BS.frA.i", "PRM.fr.o"): "PRC.L",
+        ("PRM.fr.i", "BS.frA.o"): "PRC.L.to",
+        ("BS.frA.i", "PRM.fr.o"): "PRC.L.fr",
 
-        ("SEM.fr.i", "BS.bkB.o"): "SEC.L",
-        ("BS.bkB.i", "SEM.fr.o"): "SEC.L",
+        ("SEM.fr.i", "BS.bkB.o"): "SEC.L.to",
+        ("BS.bkB.i", "SEM.fr.o"): "SEC.L.fr",
     })
 
     sflu = SFLU.SFLU(
@@ -255,7 +255,7 @@ def test_DRFPMI(tpath_join, plotTF, pprint):
     ifo.Optics.Loss = 0
     ifo.Optics.BSLoss = 0
     ifo.Optics.ETM.Transmittance = 0
-    ifo.Suspension.RPdynamics = 'None'
+    ifo.Suspension.RPdynamics = 'FreeMass'
     if gwinc_type == 'superQK':
         _, access = plant_debug(F_Hz, ifo)
     elif gwinc_type == 'master':
@@ -274,7 +274,7 @@ def test_DRFPMI(tpath_join, plotTF, pprint):
     Ls_m = Lsec_m - Lavg_m
     Lp_m = Lprc_m - Lavg_m
 
-    nhom = 1
+    nhom = 2
     mlib = MatrixLib(nhom=nhom)
     mode_order = np.arange(1, nhom + 1)
     # ARM_gouy_rad = -23 * np.pi/180 * mode_order
@@ -296,17 +296,20 @@ def test_DRFPMI(tpath_join, plotTF, pprint):
     if nhom > 0:
         MM_SEC_XARM_L = np.linspace(0.001, 0.005, nhom)
         # MM_SEC_XARM_L = np.zeros(nhom)
-        pprint(MM_SEC_XARM_L.shape)
         MM_SEC_XARM_rad = np.zeros_like(MM_SEC_XARM_L)  # np.linspace(0, 90, nhom) * np.pi/180
         # MM_XARM_YARM_L = MM_SEC_XARM_L
         MM_XARM_YARM_L = np.zeros_like(MM_SEC_XARM_L)
         # MM_XARM_YARM_rad = np.zeros_like(MM_SEC_XARM_rad)
         MM_XARM_YARM_rad = np.ones_like(MM_SEC_XARM_rad) * np.pi
+        MM_SEC_PRC_L = np.linspace(0.001, 0.005, nhom)
+        MM_SEC_PRC_rad = np.zeros_like(MM_SEC_PRC_L)
     else:
         MM_SEC_XARM_L = 0
         MM_XARM_YARM_L = 0
         MM_SEC_XARM_rad = 0
         MM_XARM_YARM_rad = 0
+        MM_SEC_PRC_L = 0
+        MM_SEC_PRC_rad = 0
 
     if nhom == 1:
         ifo.Optics.MM_ARM_SRC = MM_SEC_XARM_L
@@ -325,6 +328,7 @@ def test_DRFPMI(tpath_join, plotTF, pprint):
     MM_XARM_YARM = mlib.MrotationMM(MM_XARM_YARM_L, MM_XARM_YARM_rad)
     MM_SEC_YARM = MM_SEC_XARM @ MM_XARM_YARM
     pprint(np.all(MM_SEC_XARM == MM_SEC_YARM))
+    MM_SEC_PRC = mlib.MrotationMM(MM_SEC_PRC_L, MM_SEC_PRC_rad)
 
     SEC_detune_rad = np.pi/2 + SEC_detune_rad
 
@@ -359,11 +363,13 @@ def test_DRFPMI(tpath_join, plotTF, pprint):
         'PRM',
         Thr=Tp,
         mlib=mlib,
+        loss_ports=True,
     )
     edge_objs.SEM = edges.MirrorEdge(
         'SEM',
         Thr=Ts,
         mlib=mlib,
+        loss_ports=True,
     )
     for link_name in ['XARM', 'YARM']:
         edge_objs[link_name] = edges.LinkEdge(
@@ -396,17 +402,32 @@ def test_DRFPMI(tpath_join, plotTF, pprint):
         MM_fr=Minv(MM_SEC_YARM),
         mlib=mlib,
     )
-    edge_objs['SEC'] = edges.LinkEdge(
-        'SEC.L',
+    edge_objs['L_SEC_to'] = edges.LinkEdge(
+        'SEC.L.to',
         L_m=Ls_m,
         detune_rad=SEC_detune_rad,
         gouy_rad=SEC_gouy_rad,
         mlib=mlib,
     )
-    edge_objs['PRC'] = edges.LinkEdge(
-        'PRC.L',
+    edge_objs['L_SEC_fr'] = edges.LinkEdge(
+        'SEC.L.fr',
+        L_m=Ls_m,
+        detune_rad=SEC_detune_rad,
+        gouy_rad=SEC_gouy_rad,
+        mlib=mlib,
+    )
+    edge_objs['PRC_to'] = edges.LinkEdge(
+        'PRC.L.to',
         L_m=Lp_m,
         gouy_rad=PRC_gouy_rad,
+        MM_to=MM_SEC_PRC,
+        mlib=mlib,
+    )
+    edge_objs['PRC_fr'] = edges.LinkEdge(
+        'PRC.L.fr',
+        L_m=Lp_m,
+        gouy_rad=PRC_gouy_rad,
+        MM_fr=Minv(MM_SEC_PRC),
         mlib=mlib,
     )
 
@@ -1018,7 +1039,7 @@ def test_CoupledCavNoITM_RP(tpath_join, plotTF, pprint):
         fig2.savefig(tpath_join('reflIFO_err.pdf'))
 
 
-def plot_graph(tpath_join):
+def plot_graph_DRFPMI(tpath_join):
     sflu = sflu_DRFPMI()
     G1 = sflu.G.copy()
     sflu.graph_reduce_auto_pos(lX=-8, rX=+8, Y=3, dY=-3),
@@ -1076,3 +1097,11 @@ def plot_graph_CoupledCavNoITM_RP(tpath_join):
         fname=tpath_join("testG.pdf"),
         scale="10pt",
     )
+
+
+def test_build_DRFPMI(tpath_join):
+    sflu = sflu_DRFPMI()
+    yamlstr = sflu.convert_self2yamlstr()
+    with open(tpath_join('DRFPMI.yaml'), 'w') as F:
+        F.write(yamlstr)
+    sflu = SFLU.SFLU.convert_yamlstr2self(yamlstr)
