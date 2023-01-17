@@ -417,7 +417,7 @@ class MatrixLib:
         if np.isscalar(mat):
             M = mat * self.Id
         elif mat.shape == (self.nhom + 1, self.nhom + 1):
-            M = self.zeros
+            M = self.zeros.astype(mat.dtype)
             for (ri, ci), x in np.ndenumerate(mat):
                 row = slice(2 * ri, 2 * ri + 2)
                 col = slice(2 * ci, 2 * ci + 2)
@@ -425,7 +425,7 @@ class MatrixLib:
         elif mat.shape == (self.dim, self.dim):
             M = mat
         elif mat.shape == (self.nhom + 1,):
-            M = self.zeros
+            M = self.zeros.astype(mat.dtype)
             for ii, x in enumerate(mat):
                 inds = slice(2 * ii, 2 * ii + 2)
                 M[inds, inds] = x * np.eye(2)
