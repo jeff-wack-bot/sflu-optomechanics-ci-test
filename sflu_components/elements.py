@@ -60,7 +60,6 @@ class MirrorElement(optics.GraphElement):
                 edges[("bk.o", "bkL.i")]['dist'] = 0.2
 
                 nodes["frL.i"]['angle'] = +45
-
             pass
         elif rot_deg < 270 + 45:
             edges[("fr.o", "fr.i")]['handed'] = 'r'
@@ -71,6 +70,55 @@ class MirrorElement(optics.GraphElement):
                 nodes["frL.i"]['angle'] = -135
                 nodes["bkL.i"]['angle'] = +45
                 edges[("bk.o", "bkL.i")]['dist'] = 0.2
+            # ~270deg
+            pass
+        else:
+            pass
+        super().properties(
+            nodes=nodes,
+            edges=edges,
+            rot_deg=rot_deg,
+            **kw
+        )
+        return
+
+
+class BeamSplitterElement(optics.GraphElement):
+
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.locations.update({
+            "frA.i": (-10, +5),
+            "frA.o": (-10, -5),
+            "bkA.i": (+10, -5),
+            "bkA.o": (+10, +5),
+            "frB.o": (-5, +10),
+            "frB.i": (+5, +10),
+            "bkB.i": (-5, -10),
+            "bkB.o": (+5, -10),
+        })
+        self.edges.update({
+            ("bkA.o", "frA.i"): ".t",
+            ("frA.o", "bkA.i"): ".t",
+            ("bkB.o", "frB.i"): ".t",
+            ("frB.o", "bkB.i"): ".t",
+            ("frB.o", "frA.i"): ".fr.r",
+            ("frA.o", "frB.i"): ".fr.r",
+            ("bkA.o", "bkB.i"): ".bk.r",
+            ("bkB.o", "bkA.i"): ".bk.r",
+        })
+
+    def properties(self, nodes, edges, rot_deg, **kw):
+        if rot_deg < 45:
+            # ~0deg
+            pass
+        elif rot_deg < 135:
+            # ~90deg
+            pass
+        elif rot_deg < 180 + 45:
+            # ~180deg
+            pass
+        elif rot_deg < 270 + 45:
             # ~270deg
             pass
         else:
