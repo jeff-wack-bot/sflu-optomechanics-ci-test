@@ -249,30 +249,41 @@ def test_gain_single(sflu_func, ref_gain, pprint):
     assert np.isclose(gain, ref_gain.gain)
 
 
-def test_multiple_gouys(pprint):
+@pytest.mark.parametrize('nhom', [1, 2])
+def test_multiple_gouys(nhom, pprint):
     sflu = sflu_FP()
     sflu.reduce_auto()
 
     # par = deepcopy(par)
-    mlib = MatrixLib(nhom=1)
+    mlib = MatrixLib(nhom=nhom)
     F_Hz = par.fmech_Hz
     re = np.sqrt(1 - par.Te - par.Lhr)
     te = np.sqrt(par.Te)
-    overlap = mlib.promote(
-        np.array([
-            [0, par.overlap],
-            [par.overlap, 0],
-        ])
-    )
-    Ri_m = par.Ri_m * (1 + np.array([0, 1e-3, 1e-2]))
-    Re_m = par.Re_m * (1 + np.array([0, 1e-3, 1e-2]))
-    arm_gouy_rad = par.mode_order * gouyRT_rad(par.Larm_m, Ri_m, Re_m) / 2
+    # overlap = np.array([
+    #     [0, par.overlap],
+    #     [par.overlap, 0],
+    # ])
+    overlap = np.zeros((nhom + 1, nhom + 1))
+    overlap[0, 1:] = np.ones(nhom) * par.overlap
+    overlap[1:, 0] = np.ones(nhom) * par.overlap
+    overlap = mlib.promote(overlap)
+    Ri_m = par.Ri_m * (1 + np.array([0, 1e-3, 1e-2, 5e-2]))
+    Re_m = par.Re_m * (1 + np.array([0, 1e-3, 1e-2, 5e-2]))
+    arm_gouyRT_rad = gouyRT_rad(par.Larm_m, Ri_m, Re_m)
+    if nhom == 1:
+        arm_gouy_rad = par.mode_order * arm_gouyRT_rad / 2
+        L_ARM = edges.LinkEdge("tau", par.Larm_m, 0, [arm_gouy_rad], mlib=mlib)
+    elif nhom == 2:
+        arm_gouy_rad = np.zeros((2, len(Ri_m)))
+        arm_gouy_rad[0] = par.mode_order * arm_gouyRT_rad / 2
+        arm_gouy_rad[1] = (par.mode_order + 1) * arm_gouyRT_rad / 2
+        L_ARM = edges.LinkEdge("tau", par.Larm_m, 0, arm_gouy_rad, mlib=mlib)
+
     def suscept(F_Hz):
         den = par.fmech_Hz**2 - F_Hz**2 + 1j * par.fmech_Hz * F_Hz / par.Qm
         return 1 / par.M_kg / (2 * np.pi)**2 / den
 
     IX  = edges.MirrorEdge("IX", Thr=par.Ti, Lhr=par.Lhr, mlib=mlib)
-    L_ARM = edges.LinkEdge("tau", par.Larm_m, 0, [arm_gouy_rad], mlib=mlib)
     EX = edges.RPMirrorEdge(
         "EX", Thr=par.Te, Lhr=par.Lhr,
         suscept=suscept, overlap=overlap,
@@ -311,6 +322,8 @@ def test_multiple_gouys(pprint):
     gain = np.real(1 - 1/cl)
     print("closed loop:", cl)
     print("gain:", gain)
+    pprint(gain.shape)
+    assert gain.shape == Ri_m.shape
 
 
 @pytest.mark.parametrize('sflu_func', [sflu_FP, sflu_DRFPMI])
