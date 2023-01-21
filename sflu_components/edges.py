@@ -20,18 +20,34 @@ class MirrorEdge:
             mlib=MatrixLib(nhom=0),
             loss_ports=False,
     ):
+        self._mlib = mlib
         self.name = name
-        self.t = mlib.promote(np.sqrt(Thr))
-        self.l = mlib.promote(np.sqrt(Lhr))
-        self.r = mlib.promote(np.sqrt(
+        self._t = mlib.promote(np.sqrt(Thr))
+        self._l = mlib.promote(np.sqrt(Lhr))
+        self._r = mlib.promote(np.sqrt(
             mlib.Id
             - mlib.promote(Thr)
             - mlib.promote(Lhr)
             - mlib.promote(Rar)
         ))
         self.lambda_m = lambda_m
-        self.mlib = mlib
         self._loss_ports = loss_ports
+
+    @property
+    def mlib(self):
+        return self._mlib
+
+    @property
+    def t(self):
+        return self._t
+
+    @property
+    def l(self):
+        return self._l
+
+    @property
+    def r(self):
+        return self._r
 
     def _optic_edges(self):
         edge_map = {
@@ -153,26 +169,53 @@ class LinkEdge:
             MM_to=1,
             mlib=MatrixLib(nhom=0),
     ):
+        self._mlib = mlib
         self.name = name
         self.L_m = L_m
         self.detune_rad = detune_rad
-        self.MM_fr = mlib.promote(MM_fr)
-        self.MM_to = mlib.promote(MM_to)
-        self.mlib = mlib
+        self.gouy_rad = gouy_rad
+        self.MM_fr = MM_fr
+        self.MM_to = MM_to
 
+    @property
+    def mlib(self):
+        return self._mlib
+
+    @property
+    def MM_fr(self):
+        return self._MM_fr
+
+    @MM_fr.setter
+    def MM_fr(self, MM_fr):
+        self._MM_fr = self.mlib.promote(MM_fr)
+
+    @property
+    def MM_to(self):
+        return self._MM_to
+
+    @MM_to.setter
+    def MM_to(self, MM_to):
+        self._MM_to = self.mlib.promote(MM_to)
+
+    @property
+    def gouy_rad(self):
+        return self._gouy_rad
+
+    @gouy_rad.setter
+    def gouy_rad(self, gouy_rad):
         if gouy_rad is None:
-            self.gouy_rad = np.zeros(mlib.nhom)
+            self._gouy_rad = np.zeros(self.mlib.nhom)
         else:
             if np.isscalar(gouy_rad):
-                if mlib.nhom == 0:
-                    self.gouy_rad = np.zeros(0)
-                elif mlib.nhom == 1:
-                    self.gouy_rad = np.array([gouy_rad])
+                if self.mlib.nhom == 0:
+                    self._gouy_rad = np.zeros(0)
+                elif self.mlib.nhom == 1:
+                    self._gouy_rad = np.array([gouy_rad])
                 else:
                     raise ValueError('need gouy_phases for all HOMs')
             else:
-                assert len(gouy_rad) == mlib.nhom
-                self.gouy_rad = gouy_rad
+                assert len(gouy_rad) == self.mlib.nhom
+                self._gouy_rad = gouy_rad
 
     def _edges(self, Lmat):
         edge_map = {
@@ -255,10 +298,11 @@ class RPMirrorEdge:
             mlib=MatrixLib(nhom=0),
             loss_ports=False,
     ):
+        self._mlib = mlib
         self.name = name
-        self.t = mlib.promote(np.sqrt(Thr))
-        self.l = mlib.promote(np.sqrt(Lhr))
-        self.r = mlib.promote(np.sqrt(
+        self._t = mlib.promote(np.sqrt(Thr))
+        self._l = mlib.promote(np.sqrt(Lhr))
+        self._r = mlib.promote(np.sqrt(
             mlib.Id
             - mlib.promote(Thr)
             - mlib.promote(Lhr)
@@ -266,9 +310,32 @@ class RPMirrorEdge:
         ))
         self.suscept = suscept
         self.lambda_m = lambda_m
-        self.overlap = mlib.promote(overlap)
-        self.mlib = mlib
+        self.overlap = overlap
         self._loss_ports = loss_ports
+
+    @property
+    def mlib(self):
+        return self._mlib
+
+    @property
+    def t(self):
+        return self._t
+
+    @property
+    def l(self):
+        return self._l
+
+    @property
+    def r(self):
+        return self._r
+
+    @property
+    def overlap(self):
+        return self._overlap
+
+    @overlap.setter
+    def overlap(self, overlap):
+        self._overlap = self.mlib.promote(overlap)
 
     def _optic_edges(self):
         edge_map = {
