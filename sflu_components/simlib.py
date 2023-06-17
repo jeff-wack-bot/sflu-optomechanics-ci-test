@@ -51,6 +51,7 @@ def optickle_model(basename, params=None):
         mname = os.path.join(mpath, basename + '_optickle_model.h5')
         pname = os.path.join(mpath, basename + '_optickle_params.yaml')
         hname = os.path.join(mpath, basename + '_optickle_hash.txt')
+        print(mpath)
 
         # native python hash() doesn't reliably work
         func_code = inspect.getsource(func)

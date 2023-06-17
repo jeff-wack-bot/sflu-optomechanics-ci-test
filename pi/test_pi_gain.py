@@ -3,7 +3,7 @@ Test calculation of PI gains
 """
 
 import numpy as np
-from wavestate.control.SFLU import SFLU, optics, nx2tikz
+from wield.control.SFLU import SFLU, optics, nx2tikz
 from sflu_components import elements, edges
 from sflu_components.lib import MatrixLib, adjoint
 import scipy.constants as scc

@@ -1,4 +1,4 @@
-from wavestate.control.SFLU import optics
+from wield.control.SFLU import optics
 
 
 class MirrorElement(optics.GraphElement):

@@ -1,5 +1,5 @@
 import numpy as np
-from wavestate.control.SFLU import SFLU, optics, nx2tikz
+from wield.control.SFLU import SFLU, optics, nx2tikz
 from gwinc.noise.quantum_lib import mats_planewave as mlib
 from gwinc.struct import Struct
 import scipy.constants as scc

@@ -6,7 +6,7 @@ Test radiation pressure effects on a mirror
 """
 
 import numpy as np
-from wavestate.control.SFLU import SFLU, optics, nx2tikz
+from wield.control.SFLU import SFLU, optics, nx2tikz
 from sflu_components import elements, edges, simlib
 from sflu_components.lib import MatrixLib, adjoint, Vnorm_sq, transpose
 from gwinc.struct import Struct

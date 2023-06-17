@@ -10,7 +10,7 @@ mirror definition. These are the HRMirrorRPReduced models.
 the HRMirrorRP models.
 """
 import numpy as np
-from wavestate.control.SFLU import SFLU, optics, nx2tikz, SFLUcompute
+from wield.control.SFLU import SFLU, optics, nx2tikz, SFLUcompute
 import components as cmp
 from gwinc.struct import Struct
 from gwinc.noise.quantum_lib import adjoint, Vnorm_sq

@@ -1,7 +1,7 @@
 """
 """
 import numpy as np
-from wavestate.control.SFLU import SFLU, optics, nx2tikz
+from wield.control.SFLU import SFLU, optics, nx2tikz
 import scipy.constants as scc
 from gwinc.struct import Struct
 from gwinc.noise.quantum_lib import (
