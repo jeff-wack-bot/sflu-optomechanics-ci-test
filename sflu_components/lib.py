@@ -440,6 +440,27 @@ class MatrixLib:
         """
         return Minv(M)
 
+    @classmethod
+    def transpose(cls, M):
+        """
+        Matrix transpose
+        """
+        return transpose(M)
+
+    @classmethod
+    def adjoint(cls, M):
+        """
+        Matrix adjoint
+        """
+        return adjoint(M)
+
+    @classmethod
+    def Vnorm_sq(cls, M):
+        """
+        The matrix norm squared: adjoint(M) @ M
+        """
+        return Vnorm_sq(M)
+
     @property
     def A(self):
         """
