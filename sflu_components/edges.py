@@ -345,7 +345,7 @@ class RPMirrorEdge:
             self.name + ".bk.t": self.t,
         }
         if self._loss_ports:
-            edges_map.update({
+            edge_map.update({
                 self.name + ".fr.l": self.l,
                 self.name + ".bk.l": self.l,
             })
