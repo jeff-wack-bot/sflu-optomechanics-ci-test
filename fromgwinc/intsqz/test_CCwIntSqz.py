@@ -34,19 +34,19 @@ def sflu_CoupledCav(
     if use_ITMRP:
         ifo.subgraph_add(
             "ITM", elements.RPMirrorElement(loss_ports=True),
-            translation_xy=(25, 0),
+            translation_xy=(45, 0),
             rotation_deg=180,
         )
     else:
         ifo.subgraph_add(
             "ITM", elements.MirrorElement(loss_ports=True),
-            translation_xy=(25, 0),
+            translation_xy=(45, 0),
             rotation_deg=180,
         )
 
     ifo.subgraph_add(
         "ETM", elements.RPMirrorElement(loss_ports=True),
-        translation_xy=(55, 0),
+        translation_xy=(95, 0),
         rotation_deg=0,
     )
     ifo.subgraph_add(
@@ -55,11 +55,23 @@ def sflu_CoupledCav(
         rotation_deg=180,
     )
 
+    ##
+
+    # add another lossy mirror for the SQZ beamsplitter model losses
+    ifo.subgraph_add(
+        "INTSQZL", elements.MirrorElement(loss_ports=True),
+        translation_xy=(25, 0),
+        rotation_deg=180,
+    )
+
     ifo.edges.update({
         ("ETM.fr.i", "ITM.fr.o"): "ARM.L",
         ("ITM.fr.i", "ETM.fr.o"): "ARM.L",
-        ("ITM.bk.i", "SEM.fr.o"): "SEC.L.to",
-        ("SEM.fr.i", "ITM.bk.o"): "SEC.L.fr",
+        ("ITM.bk.i", "INTSQZL.fr.o"): "SEC.L.to",
+        ("INTSQZL.fr.i", "ITM.bk.o"): "SEC.L.fr",
+        # and these two for the linkage of the internal squeezing
+        ("SEM.fr.i", "INTSQZL.bk.o"): "INTSQZ.armfr",
+        ("INTSQZL.bk.i", "SEM.fr.o"): "INTSQZ.armto",
     })
 
     ifo["SEM"].locations.update({
@@ -97,6 +109,16 @@ def sflu_CoupledCav(
             FilterCavity=[
                 "FC2.frL.i",
             ],
+            INTSQZ=[
+                "INTSQZL.frL.i",
+                "INTSQZL.bkL.i",
+            ],
+            # INTSQZf=[
+            #     "INTSQZL.frL.i",
+            # ],
+            # INTSQZb=[
+            #     "INTSQZL.bkL.i",
+            # ],
             LossInjection=[
                 "Loss_injection",
             ],
@@ -193,6 +215,14 @@ def CoupledCavity(
         mlib = mlib,
     )
 
+    edge_objs.INTSQZL = optics.MirrorEdge(
+        name = 'INTSQZL',
+        Thr  = 1,
+        Lhr  = 400e-6,
+        loss_in_transmission=True,
+        mlib = mlib,
+    )
+
     ####################
     # links
     ####################
@@ -220,9 +250,28 @@ def CoupledCavity(
     edge_objs.L_SEC_fr = optics.LinkEdge(
         name       = 'SEC.L.fr',
         L_m        = params.Length_m.SEM,
-        detune_rad = SEC_detune_rad,
+        detune_rad = SEC_detune_rad - 0/180*np.pi,
         gouy_rad   = SEC_gouy_rad,
         MM_fr      = get_MM_fr(params.MM.SEC_ARM),
+        mlib       = mlib,
+    )
+
+    MM_INTSQZ = mlib.MrotationMM(ifo.Optics.MM_INTSQZ, 0 / 180 * np.pi)
+    edge_objs.INTSQZ_armto = optics.SQZEdge(
+        name       = 'INTSQZ.armto',
+        sqzDB      = -30,
+        sqzANGdeg = -0 + 45,
+        MM_to      = MM_INTSQZ,
+        MM_fr      = mlib.Minv(MM_INTSQZ),
+        mlib       = mlib,
+    )
+    edge_objs.INTSQZ_armfr = optics.SQZEdge(
+        name       = 'INTSQZ.armfr',
+        sqzDB      = 30,
+        sqzANGdeg = -0 + 45,
+        MM_to      = MM_INTSQZ,
+        MM_fr      = mlib.Minv(MM_INTSQZ),
+        #MM_fr      = get_MM_fr(params.MM.SEC_ARM),
         mlib       = mlib,
     )
 
@@ -257,6 +306,8 @@ def CoupledCavity(
         "ETM.frL.i",
         "ITM.frL.i",
         "SEM.frL.i",
+        "INTSQZL.frL.i",
+        "INTSQZL.bkL.i",
 
     }
 
@@ -288,21 +339,27 @@ def CoupledCavity(
 
 def test_CoupledCav(fpath_join, tpath_join, plotTF, pprint):
     use_SS = True
-    F_Hz = np.geomspace(10, 10e3, 1000)
+    F_Hz = np.geomspace(30, 30e3, 1000)
 
     #tpath = path.split(__file__)[0]
     #ifo = Struct.from_file(path.join(tpath, '../Aplus/ifo.yaml'))
 
-    budgetApl = gwinc.load_budget('Aplus')
+    budgetApl = gwinc.load_budget('Aplus', freq=F_Hz)
+    #budgetApl.ifo.Optics.SRM.Transmittance = .1
     budget = gwinc.load_budget(fpath_join('Aplus_MM_all_one_HOM' + '.yaml'))
-    ifo = budgetApl.ifo
-    print(ifo)
+    ifo = budget.ifo
+    ifo.Optics.SRM.Transmittance
+    ifo.Optics.SRM.Transmittance = .014
+    ifo.Optics.MM_ARM_SRC = 0.01
+    ifo.Optics.MM_INTSQZ = 0.03
+    print(ifo.Optics)
 
     sfluB = sflu_CoupledCav()
     sflu = sfluB.sflu
     sflu.reduce_auto()
     params = standardize_params(ifo)
 
+    print(params.nhom)
     mlib = params.mlib
     mats = MatsHelper()
     mats.H['AS'] = mlib.Id
@@ -417,7 +474,8 @@ def test_CoupledCav(fpath_join, tpath_join, plotTF, pprint):
 
     axB = mplfigB()
     total = ASquantumAll * PSDdisplacement
-    axB.ax0.loglog(F_Hz, (ASquantumAll * PSDdisplacement)**0.5/4000, label='ASport')
+    axB.ax0.loglog(F_Hz, (ASquantumAll * PSDdisplacement)**0.5, label='ASport')
+    axB.ax0.set_ylim(1e-22, 3e-19)
 
 
     for lpN, lpL  in sfluB.loss_ports.items():
@@ -425,15 +483,15 @@ def test_CoupledCav(fpath_join, tpath_join, plotTF, pprint):
         total += lossB
         axB.ax0.loglog(
             F_Hz,
-            (lossB)**0.5 / 4000,
+            (lossB)**0.5,
             label=lpN,
         )
 
-    axB.ax0.loglog(F_Hz, (total)**0.5/4000, label='total')
+    axB.ax0.loglog(F_Hz, (total)**0.5, label='total')
     aplB = budgetApl.run()
     aplQB = aplB.Quantum
-    axB.ax0.loglog(aplQB.freq, aplQB.asd, label = 'ALIGOtotal')
-    axB.ax0.legend()
+    axB.ax0.loglog(aplQB.freq, aplQB.asd * 4000, label = 'ALIGOtotal')
+    axB.ax0.legend(loc='upper left')
     axB.save(tpath_join('cmp'))
 
     fig = aplB.Quantum.plot()

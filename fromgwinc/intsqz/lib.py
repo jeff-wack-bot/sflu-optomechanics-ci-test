@@ -333,6 +333,31 @@ class MatrixLib:
         M[:2, :2] = SQZ2(sqzV, asqzV)
         return M
 
+    def SQZc(self, sqzV, asqzV):
+        """
+        Squeeze matrix
+
+        Parameters
+        ----------
+        sqzV : float
+          Squeezing variance
+        asqzV : float
+          Antisqueezing variance
+
+        Returns
+        -------
+        S : (dim, dim) array
+          Squeeze matrix for the fundamental mode
+
+        Examples
+        --------
+        6 dB squeezing and 15 dB anti-squeezing
+        >>> mlib.SQZ(10**(-6/10), 10**(15/10))
+        """
+        M = -self.Id
+        M[:2, :2] = SQZ2(sqzV, asqzV)
+        return M
+
     def LO(self, phi):
         """
         LO for the fundamental

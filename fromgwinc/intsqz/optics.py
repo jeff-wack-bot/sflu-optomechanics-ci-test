@@ -24,16 +24,23 @@ class MirrorEdge:
             Rar=0,
             lambda_m=1064e-9,
             mlib=MatrixLib(nhom=0),
+            loss_in_transmission=False,
     ):
         self.name = name
-        self.t = mlib.promote(np.sqrt(Thr))
-        self.l = mlib.promote(np.sqrt(Lhr))
-        self.r = mlib.promote(np.sqrt(
-            mlib.Id
-            - mlib.promote(Thr)
-            - mlib.promote(Lhr)
-            - mlib.promote(Rar)
-        ))
+        if not loss_in_transmission:
+            self.t = mlib.promote(np.sqrt(Thr))
+            self.l = mlib.promote(np.sqrt(Lhr))
+            self.r = mlib.promote(np.sqrt(
+                mlib.Id
+                - mlib.promote(Thr)
+                - mlib.promote(Lhr)
+                - mlib.promote(Rar)
+            ))
+        else:
+            self.t = mlib.promote(np.sqrt(Thr - Lhr))
+            self.l = mlib.promote(np.sqrt(Lhr))
+            self.r = mlib.promote(np.sqrt(1 - Thr))
+
         self.lambda_m = lambda_m
         self.mlib = mlib
 
@@ -253,6 +260,81 @@ class LinkEdge:
         else:
             Lmat = self.mlib.Mrotation(self.detune_rad, *self.gouy_rad)
         return self._edges(Lmat)
+
+
+class SQZEdge:
+    """
+    Defines DC and AC edges for propagation links
+
+    Parameters
+    ----------
+    name : str
+      Name of the link
+    L_m: float
+      Macroscopic length of the link [m]
+    detune_rad : float, optional
+      Common microscopic detuning of all fields [rad], 0 by default
+    gouy_rad : nhom element list of scalars or (N,) arrays, optional
+      Gouy phases for each HOM [rad], all 0 by default
+    MM_fr : scalar or (dim, dim) array, optional
+      Mode matching basis transformation at the beginning of the link,
+      (dim, dim) identity by default
+    MM_to : scalar or (dim, dim) array, optional
+      Mode matching basis transformation at the end of the link,
+      (dim, dim) identity by default
+    mlib : MatrixLib instance, optional
+      MatrixLib to use for calculations, MatrixLib(nhom=0) by default
+    """
+    def __init__(
+            self,
+            name,
+            sqzDB=0,
+            sqzANGdeg=0,
+            MM_fr=1,
+            MM_to=1,
+            mlib=MatrixLib(nhom=0),
+    ):
+        self.name = name
+        self.sqzDB = sqzDB
+        self.sqzANGrad = sqzANGdeg / 180 * np.pi
+        self.MM_fr = mlib.promote(MM_fr)
+        self.MM_to = mlib.promote(MM_to)
+        self.mlib = mlib
+
+    def _edges(self):
+        """
+        This works equivalently in statespace
+        """
+        edge_map = {
+            self.name:
+            self.MM_to @
+            self.mlib.Mrotation(self.sqzANGrad) @
+            self.mlib.SQZc(10**(self.sqzDB/10), 10**(-self.sqzDB/10)) @
+            self.mlib.Mrotation(-self.sqzANGrad) @ self.MM_fr,
+        }
+        return edge_map
+
+    def edgesDC(self):
+        """
+        Returns the DC edge map dictionary
+        """
+        return self._edges()
+
+    def edgesAC(self, F_Hz, *args, **kwargs):
+        """
+        Returns the AC edge map dictionary
+
+        F_Hz: Frequency vector at which to evaluate the edge map
+        """
+        return self._edges()
+
+    def edgesACSS(self, F_Hz, *args, **kwargs):
+        """
+        Returns the AC edge map dictionary
+
+        F_Hz: Frequency vector at which to evaluate the edge map
+        """
+        return self._edges()
 
 
 class RPMirrorEdge:

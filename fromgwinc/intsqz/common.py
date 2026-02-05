@@ -156,6 +156,7 @@ def standardize_params(ifo):
             )
         if loss > 0:
             nhom = 1
+        print(MM, loss)
 
     if 'ModeMismatch' in ifo:
         # if nhom > 0 at this point one of the above losses has been specified
@@ -185,6 +186,7 @@ def standardize_params(ifo):
         # should have some logic to deal with this
         params.is_OPD = MM.get('is_OPD', False)
 
+    params.nhom=nhom
     mlib = MatrixLib(nhom=nhom)
 
     params.mlib = mlib
