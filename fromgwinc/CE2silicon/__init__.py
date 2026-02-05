@@ -1,0 +1,85 @@
+from gwinc.ifo.noises import *
+from gwinc.ifo import PLOT_STYLE
+
+from gwinc.noise.quantum2 import (
+    Quantum,
+    QuantumRelShotNoise,
+    QuantumRelGamma,
+)
+
+
+class Newtonian(nb.Budget):
+    """Newtonian Gravity
+
+    """
+
+    name = 'Newtonian'
+
+    style = dict(
+        label='Newtonian',
+        color='#15b01a',
+    )
+
+    noises = [
+        NewtonianRayleigh,
+        NewtonianBody,
+        NewtonianInfrasound,
+    ]
+
+
+class Coating(nb.Budget):
+    """Coating Thermal
+
+    """
+
+    name = 'Coating'
+
+    style = dict(
+        label='Coating Thermal',
+        color='#fe0002',
+    )
+
+    noises = [
+        CoatingBrownian,
+        CoatingThermoOptic,
+    ]
+
+
+class Substrate(nb.Budget):
+    """Substrate Thermal
+
+    """
+
+    name = 'Substrate'
+
+    style = dict(
+        label='Substrate Thermal',
+        color='#fb7d07',
+    )
+
+    noises = [
+        ITMThermoRefractive,
+        SubstrateBrownian,
+        SubstrateThermoElastic,
+    ]
+
+
+class CE2silicon(nb.Budget):
+
+    name = 'Cosmic Explorer 2 (Silicon)'
+
+    noises = [
+        Quantum,
+        Seismic,
+        Newtonian,
+        SuspensionThermal,
+        Coating,
+        Substrate,
+        ExcessGas,
+    ]
+
+    calibrations = [
+        Strain,
+    ]
+
+    plot_style = PLOT_STYLE

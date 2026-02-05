@@ -1,0 +1,10 @@
++inherit: 'Aplus'
+
+Infrastructure:
+    LengthPRC: 58
+
+Optics:
+    SRM:
+        SRCGouy_rad: 0.3316
+    PRM:
+        PRCGouy_rad: 0.4363

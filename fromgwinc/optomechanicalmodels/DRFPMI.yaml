@@ -1,0 +1,262 @@
+edges:
+  (IX.fr.o<IX.fr.i): IX.fr.r
+  (IX.bk.o<IX.bk.i): IX.bk.r
+  (IX.bk.o<IX.fr.i): IX.fr.t
+  (IX.fr.o<IX.bk.i): IX.bk.t
+  (IX.pos<IX.fr.i): IX.fr.xq.i
+  (IX.pos<IX.fr.o): IX.fr.xq.o
+  (IX.pos<IX.bk.i): IX.bk.xq.i
+  (IX.pos<IX.bk.o): IX.bk.xq.o
+  (IX.fr.o<IX.pos): IX.fr.px
+  (IX.bk.o<IX.pos): IX.bk.px
+  (IX.fr.i.tp<IX.fr.i): '1'
+  (IX.fr.o.tp<IX.fr.o): '1'
+  (IX.bk.i.tp<IX.bk.i): '1'
+  (IX.bk.o.tp<IX.bk.o): '1'
+  (IX.pos.tp<IX.pos): 1s
+  (IX.pos<IX.pos.exc): 1s
+  (IX.fr.o<IX.frL.i): IX.fr.l
+  (IX.bk.o<IX.bkL.i): IX.bk.l
+  (EX.fr.o<EX.fr.i): EX.fr.r
+  (EX.bk.o<EX.bk.i): EX.bk.r
+  (EX.bk.o<EX.fr.i): EX.fr.t
+  (EX.fr.o<EX.bk.i): EX.bk.t
+  (EX.pos<EX.fr.i): EX.fr.xq.i
+  (EX.pos<EX.fr.o): EX.fr.xq.o
+  (EX.pos<EX.bk.i): EX.bk.xq.i
+  (EX.pos<EX.bk.o): EX.bk.xq.o
+  (EX.fr.o<EX.pos): EX.fr.px
+  (EX.bk.o<EX.pos): EX.bk.px
+  (EX.fr.i.tp<EX.fr.i): '1'
+  (EX.fr.o.tp<EX.fr.o): '1'
+  (EX.bk.i.tp<EX.bk.i): '1'
+  (EX.bk.o.tp<EX.bk.o): '1'
+  (EX.pos.tp<EX.pos): 1s
+  (EX.pos<EX.pos.exc): 1s
+  (EX.fr.o<EX.frL.i): EX.fr.l
+  (EX.bk.o<EX.bkL.i): EX.bk.l
+  (IY.fr.o<IY.fr.i): IY.fr.r
+  (IY.bk.o<IY.bk.i): IY.bk.r
+  (IY.bk.o<IY.fr.i): IY.fr.t
+  (IY.fr.o<IY.bk.i): IY.bk.t
+  (IY.pos<IY.fr.i): IY.fr.xq.i
+  (IY.pos<IY.fr.o): IY.fr.xq.o
+  (IY.pos<IY.bk.i): IY.bk.xq.i
+  (IY.pos<IY.bk.o): IY.bk.xq.o
+  (IY.fr.o<IY.pos): IY.fr.px
+  (IY.bk.o<IY.pos): IY.bk.px
+  (IY.fr.i.tp<IY.fr.i): '1'
+  (IY.fr.o.tp<IY.fr.o): '1'
+  (IY.bk.i.tp<IY.bk.i): '1'
+  (IY.bk.o.tp<IY.bk.o): '1'
+  (IY.pos.tp<IY.pos): 1s
+  (IY.pos<IY.pos.exc): 1s
+  (IY.fr.o<IY.frL.i): IY.fr.l
+  (IY.bk.o<IY.bkL.i): IY.bk.l
+  (EY.fr.o<EY.fr.i): EY.fr.r
+  (EY.bk.o<EY.bk.i): EY.bk.r
+  (EY.bk.o<EY.fr.i): EY.fr.t
+  (EY.fr.o<EY.bk.i): EY.bk.t
+  (EY.pos<EY.fr.i): EY.fr.xq.i
+  (EY.pos<EY.fr.o): EY.fr.xq.o
+  (EY.pos<EY.bk.i): EY.bk.xq.i
+  (EY.pos<EY.bk.o): EY.bk.xq.o
+  (EY.fr.o<EY.pos): EY.fr.px
+  (EY.bk.o<EY.pos): EY.bk.px
+  (EY.fr.i.tp<EY.fr.i): '1'
+  (EY.fr.o.tp<EY.fr.o): '1'
+  (EY.bk.i.tp<EY.bk.i): '1'
+  (EY.bk.o.tp<EY.bk.o): '1'
+  (EY.pos.tp<EY.pos): 1s
+  (EY.pos<EY.pos.exc): 1s
+  (EY.fr.o<EY.frL.i): EY.fr.l
+  (EY.bk.o<EY.bkL.i): EY.bk.l
+  (BS.bkA.o<BS.frA.i): BS.t
+  (BS.frA.o<BS.bkA.i): BS.t
+  (BS.bkB.o<BS.frB.i): BS.t
+  (BS.frB.o<BS.bkB.i): BS.t
+  (BS.frB.o<BS.frA.i): BS.fr.r
+  (BS.frA.o<BS.frB.i): BS.fr.r
+  (BS.bkA.o<BS.bkB.i): BS.bk.r
+  (BS.bkB.o<BS.bkA.i): BS.bk.r
+  (PRM.fr.o<PRM.bk.i): PRM.bk.t
+  (PRM.bk.o<PRM.fr.i): PRM.fr.t
+  (PRM.fr.o<PRM.fr.i): PRM.fr.r
+  (PRM.bk.o<PRM.bk.i): PRM.bk.r
+  (PRM.fr.o<PRM.frL.i): PRM.fr.l
+  (PRM.bk.o<PRM.bkL.i): PRM.bk.l
+  (PRM.bk.i<PRM.bk.i.exc): '1'
+  (SEM.fr.o<SEM.bk.i): SEM.bk.t
+  (SEM.bk.o<SEM.fr.i): SEM.fr.t
+  (SEM.fr.o<SEM.fr.i): SEM.fr.r
+  (SEM.bk.o<SEM.bk.i): SEM.bk.r
+  (SEM.fr.o<SEM.frL.i): SEM.fr.l
+  (SEM.bk.o<SEM.bkL.i): SEM.bk.l
+  (SEM.bk.i<SEM.bk.i.exc): SEC.to
+  (SEM.bk.o.tp<SEM.bk.o): SEC.fr
+  (EX.fr.i<IX.fr.o): XARM.L
+  (IX.fr.i<EX.fr.o): XARM.L
+  (IX.bk.i<BS.bkA.o): BSX.L.to
+  (BS.bkA.i<IX.bk.o): BSX.L.fr
+  (EY.fr.i<IY.fr.o): YARM.L
+  (IY.fr.i<EY.fr.o): YARM.L
+  (IY.bk.i<BS.frB.o): BSY.L.to
+  (BS.frB.i<IY.bk.o): BSY.L.fr
+  (PRM.fr.i<BS.frA.o): PRC.L.to
+  (BS.frA.i<PRM.fr.o): PRC.L.fr
+  (SEM.fr.i<BS.bkB.o): SEC.L.to
+  (BS.bkB.i<SEM.fr.o): SEC.L.fr
+derivatives: []
+reduce_list: []
+G_nodes:
+  IX.fr.i:
+    pos: [31.0, -7.000000000000001]
+  IX.fr.o:
+    pos: [31.0, 6.999999999999999]
+  IX.bk.i:
+    pos: [19.0, 7.000000000000001]
+  IX.bk.o:
+    pos: [19.0, -6.999999999999999]
+  IX.pos:
+    pos: [25.0, 0.0]
+  IX.fr.i.tp:
+    pos: [34.0, -10.000000000000002]
+  IX.fr.o.tp:
+    pos: [34.0, 9.999999999999998]
+  IX.bk.i.tp:
+    pos: [16.0, 10.000000000000002]
+  IX.bk.o.tp:
+    pos: [15.999999999999998, -9.999999999999998]
+  IX.pos.tp:
+    pos: [34.0, -1.102182119232618e-15]
+  IX.pos.exc:
+    pos: [16.0, 1.102182119232618e-15]
+  IX.frL.i:
+    pos: [28.0, 10.0]
+  IX.bkL.i:
+    pos: [21.0, -10.0]
+  EX.fr.i:
+    pos: [49.0, 7.0]
+  EX.fr.o:
+    pos: [49.0, -7.0]
+  EX.bk.i:
+    pos: [61.0, -7.0]
+  EX.bk.o:
+    pos: [61.0, 7.0]
+  EX.pos:
+    pos: [55.0, 0.0]
+  EX.fr.i.tp:
+    pos: [46.0, 10.0]
+  EX.fr.o.tp:
+    pos: [46.0, -10.0]
+  EX.bk.i.tp:
+    pos: [64.0, -10.0]
+  EX.bk.o.tp:
+    pos: [64.0, 10.0]
+  EX.pos.tp:
+    pos: [46.0, 0.0]
+  EX.pos.exc:
+    pos: [64.0, 0.0]
+  EX.frL.i:
+    pos: [52.0, -10.0]
+  EX.bkL.i:
+    pos: [59.0, 10.0]
+  IY.fr.i:
+    pos: [7.000000000000001, 31.0]
+  IY.fr.o:
+    pos: [-6.999999999999999, 31.0]
+  IY.bk.i:
+    pos: [-7.000000000000001, 19.0]
+  IY.bk.o:
+    pos: [6.999999999999999, 19.0]
+  IY.pos:
+    pos: [0.0, 25.0]
+  IY.fr.i.tp:
+    pos: [10.000000000000002, 34.0]
+  IY.fr.o.tp:
+    pos: [-9.999999999999998, 34.0]
+  IY.bk.i.tp:
+    pos: [-10.000000000000002, 16.000000000000004]
+  IY.bk.o.tp:
+    pos: [9.999999999999998, 15.999999999999998]
+  IY.pos.tp:
+    pos: [1.6532731788489267e-15, 34.0]
+  IY.pos.exc:
+    pos: [-1.6532731788489267e-15, 16.0]
+  IY.frL.i:
+    pos: [-10.0, 28.000000000000004]
+  IY.bkL.i:
+    pos: [10.0, 20.999999999999996]
+  EY.fr.i:
+    pos: [-7.0, 49.0]
+  EY.fr.o:
+    pos: [7.0, 49.0]
+  EY.bk.i:
+    pos: [7.0, 61.0]
+  EY.bk.o:
+    pos: [-7.0, 61.0]
+  EY.pos:
+    pos: [0.0, 55.0]
+  EY.fr.i.tp:
+    pos: [-10.0, 46.0]
+  EY.fr.o.tp:
+    pos: [10.0, 46.0]
+  EY.bk.i.tp:
+    pos: [10.0, 64.0]
+  EY.bk.o.tp:
+    pos: [-10.0, 64.0]
+  EY.pos.tp:
+    pos: [-5.51091059616309e-16, 46.0]
+  EY.pos.exc:
+    pos: [5.51091059616309e-16, 64.0]
+  EY.frL.i:
+    pos: [10.0, 52.0]
+  EY.bkL.i:
+    pos: [-10.0, 59.0]
+  BS.frA.i:
+    pos: [-10.0, 5.0]
+  BS.bkA.o:
+    pos: [10.0, 5.0]
+  BS.bkA.i:
+    pos: [10.0, -5.0]
+  BS.frA.o:
+    pos: [-10.0, -5.0]
+  BS.frB.i:
+    pos: [5.0, 10.0]
+  BS.bkB.o:
+    pos: [5.0, -10.0]
+  BS.bkB.i:
+    pos: [-5.0, -10.0]
+  BS.frB.o:
+    pos: [-5.0, 10.0]
+  PRM.bk.i:
+    pos: [-29.0, 5.000000000000001]
+  PRM.fr.o:
+    pos: [-21.0, 4.999999999999999]
+  PRM.fr.i:
+    pos: [-21.0, -5.000000000000001]
+  PRM.bk.o:
+    pos: [-29.0, -4.999999999999999]
+  PRM.frL.i:
+    pos: [-23.0, 10.0]
+  PRM.bkL.i:
+    pos: [-27.0, -10.0]
+  PRM.bk.i.exc:
+    pos: [-40.0, 10.000000000000002]
+  SEM.bk.i:
+    pos: [-5.000000000000001, -29.0]
+  SEM.fr.o:
+    pos: [-4.999999999999999, -21.0]
+  SEM.fr.i:
+    pos: [5.000000000000001, -21.0]
+  SEM.bk.o:
+    pos: [4.999999999999999, -29.0]
+  SEM.frL.i:
+    pos: [-10.0, -22.999999999999996]
+  SEM.bkL.i:
+    pos: [10.0, -27.000000000000004]
+  SEM.bk.i.exc:
+    pos: [-10.000000000000004, -40.0]
+  SEM.bk.o.tp:
+    pos: [9.999999999999996, -40.0]
+G_edges: {}

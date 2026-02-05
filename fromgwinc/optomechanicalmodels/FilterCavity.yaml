@@ -1,0 +1,49 @@
+edges:
+  (FC1.fr.o<FC1.bk.i): FC1.bk.t
+  (FC1.bk.o<FC1.fr.i): FC1.fr.t
+  (FC1.fr.o<FC1.fr.i): FC1.fr.r
+  (FC1.bk.o<FC1.bk.i): FC1.bk.r
+  (FC1.fr.o<FC1.frL.i): FC1.fr.l
+  (FC1.bk.o<FC1.bkL.i): FC1.bk.l
+  (FC1.bk.i<FC1.bk.i.exc): FC.to
+  (FC1.bk.o.tp<FC1.bk.o): FC.fr
+  (FC2.fr.o<FC2.bk.i): FC2.bk.t
+  (FC2.bk.o<FC2.fr.i): FC2.fr.t
+  (FC2.fr.o<FC2.fr.i): FC2.fr.r
+  (FC2.bk.o<FC2.bk.i): FC2.bk.r
+  (FC2.fr.o<FC2.frL.i): FC2.fr.l
+  (FC2.bk.o<FC2.bkL.i): FC2.bk.l
+  (FC2.fr.i<FC1.fr.o): FC.L
+  (FC1.fr.i<FC2.fr.o): FC.L
+derivatives: []
+reduce_list: []
+G_nodes:
+  FC1.bk.i:
+    pos: [-14.0, 5.000000000000001]
+  FC1.fr.o:
+    pos: [-5.999999999999999, 4.999999999999999]
+  FC1.fr.i:
+    pos: [-6.000000000000001, -5.000000000000001]
+  FC1.bk.o:
+    pos: [-14.0, -4.999999999999999]
+  FC1.frL.i:
+    pos: [-7.999999999999999, 10.0]
+  FC1.bkL.i:
+    pos: [-12.000000000000002, -10.0]
+  FC1.bk.i.exc:
+    pos: [-18.0, 6.000000000000001]
+  FC1.bk.o.tp:
+    pos: [-18.0, -5.999999999999999]
+  FC2.bk.i:
+    pos: [14.0, -5.0]
+  FC2.fr.o:
+    pos: [6.0, -5.0]
+  FC2.fr.i:
+    pos: [6.0, 5.0]
+  FC2.bk.o:
+    pos: [14.0, 5.0]
+  FC2.frL.i:
+    pos: [8.0, -10.0]
+  FC2.bkL.i:
+    pos: [12.0, 10.0]
+G_edges: {}

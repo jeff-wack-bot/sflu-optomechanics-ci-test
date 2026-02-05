@@ -1,0 +1,95 @@
+edges:
+  (ITM.fr.o<ITM.bk.i): ITM.bk.t
+  (ITM.bk.o<ITM.fr.i): ITM.fr.t
+  (ITM.fr.o<ITM.fr.i): ITM.fr.r
+  (ITM.bk.o<ITM.bk.i): ITM.bk.r
+  (ITM.fr.o<ITM.frL.i): ITM.fr.l
+  (ITM.bk.o<ITM.bkL.i): ITM.bk.l
+  (ETM.fr.o<ETM.fr.i): ETM.fr.r
+  (ETM.bk.o<ETM.bk.i): ETM.bk.r
+  (ETM.bk.o<ETM.fr.i): ETM.fr.t
+  (ETM.fr.o<ETM.bk.i): ETM.bk.t
+  (ETM.pos<ETM.fr.i): ETM.fr.xq.i
+  (ETM.pos<ETM.fr.o): ETM.fr.xq.o
+  (ETM.pos<ETM.bk.i): ETM.bk.xq.i
+  (ETM.pos<ETM.bk.o): ETM.bk.xq.o
+  (ETM.fr.o<ETM.pos): ETM.fr.px
+  (ETM.bk.o<ETM.pos): ETM.bk.px
+  (ETM.fr.i.tp<ETM.fr.i): '1'
+  (ETM.fr.o.tp<ETM.fr.o): '1'
+  (ETM.bk.i.tp<ETM.bk.i): '1'
+  (ETM.bk.o.tp<ETM.bk.o): '1'
+  (ETM.pos.tp<ETM.pos): 1s
+  (ETM.pos<ETM.pos.exc): 1s
+  (ETM.fr.o<ETM.frL.i): ETM.fr.l
+  (ETM.bk.o<ETM.bkL.i): ETM.bk.l
+  (SEM.fr.o<SEM.bk.i): SEM.bk.t
+  (SEM.bk.o<SEM.fr.i): SEM.fr.t
+  (SEM.fr.o<SEM.fr.i): SEM.fr.r
+  (SEM.bk.o<SEM.bk.i): SEM.bk.r
+  (SEM.fr.o<SEM.frL.i): SEM.fr.l
+  (SEM.bk.o<SEM.bkL.i): SEM.bk.l
+  (SEM.bk.i<SEM.bk.i.exc): SEC.to
+  (SEM.bk.o.tp<SEM.bk.o): SEC.fr
+  (ETM.fr.i<ITM.fr.o): ARM.L
+  (ITM.fr.i<ETM.fr.o): ARM.L
+  (ITM.bk.i<SEM.fr.o): SEC.L.to
+  (SEM.fr.i<ITM.bk.o): SEC.L.fr
+derivatives: []
+reduce_list: []
+G_nodes:
+  ITM.bk.i:
+    pos: [21.0, 5.000000000000001]
+  ITM.fr.o:
+    pos: [29.0, 4.999999999999999]
+  ITM.fr.i:
+    pos: [29.0, -5.000000000000001]
+  ITM.bk.o:
+    pos: [21.0, -4.999999999999999]
+  ITM.frL.i:
+    pos: [27.0, 10.0]
+  ITM.bkL.i:
+    pos: [23.0, -10.0]
+  ETM.fr.i:
+    pos: [49.0, 7.0]
+  ETM.fr.o:
+    pos: [49.0, -7.0]
+  ETM.bk.i:
+    pos: [61.0, -7.0]
+  ETM.bk.o:
+    pos: [61.0, 7.0]
+  ETM.pos:
+    pos: [55.0, 0.0]
+  ETM.fr.i.tp:
+    pos: [46.0, 10.0]
+  ETM.fr.o.tp:
+    pos: [46.0, -10.0]
+  ETM.bk.i.tp:
+    pos: [64.0, -10.0]
+  ETM.bk.o.tp:
+    pos: [64.0, 10.0]
+  ETM.pos.tp:
+    pos: [46.0, 0.0]
+  ETM.pos.exc:
+    pos: [64.0, 0.0]
+  ETM.frL.i:
+    pos: [52.0, -10.0]
+  ETM.bkL.i:
+    pos: [59.0, 10.0]
+  SEM.bk.i:
+    pos: [-3.9999999999999996, 5.000000000000001]
+  SEM.fr.o:
+    pos: [4.000000000000001, 4.999999999999999]
+  SEM.fr.i:
+    pos: [3.9999999999999996, -5.000000000000001]
+  SEM.bk.o:
+    pos: [-4.000000000000001, -4.999999999999999]
+  SEM.frL.i:
+    pos: [2.0000000000000013, 10.0]
+  SEM.bkL.i:
+    pos: [-2.0000000000000013, -10.0]
+  SEM.bk.i.exc:
+    pos: [-14.999999999999998, 10.000000000000002]
+  SEM.bk.o.tp:
+    pos: [-15.000000000000002, -9.999999999999998]
+G_edges: {}
