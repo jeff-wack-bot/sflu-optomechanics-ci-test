@@ -1,0 +1,8 @@
+[tool.pytest-watcher]
+now = true
+clear = false
+delay = 0.5
+runner = "pytest"
+runner_args = ["-s"]
+patterns = ["*.py", "*.yaml"]
+ignore_patterns = [".#*"]

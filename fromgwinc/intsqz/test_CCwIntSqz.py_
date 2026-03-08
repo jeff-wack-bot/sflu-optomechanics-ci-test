@@ -723,7 +723,8 @@ def test_CoupledCav_variants(fpath_join, tpath_join, plotTF, pprint):
     #ifo = Struct.from_file(path.join(tpath, '../Aplus/ifo.yaml'))
     budgetApl = gwinc.load_budget('Aplus', freq=F_Hz)
     aplB = budgetApl.run()
-    CLPSD = aplB.psd - aplB.Quantum.psd
+    CTNPSD = aplB.CoatingBrownian.psd
+    CTNPSD = aplB.psd - aplB.Quantum.psd
 
 
     #budget = gwinc.load_budget(fpath_join('Ahat25' + '.yaml'))
@@ -732,21 +733,16 @@ def test_CoupledCav_variants(fpath_join, tpath_join, plotTF, pprint):
     #ifo.Optics.INTSQ_loss = 2000e-6
     # print(ifo.Optics)
 
-    budgetD = {
-        'freq': F_Hz,
-        'AplCl': CLPSD,
-    }
-
-    def plot_loss_series(axB, ifo, *, name, **kw):
-        ifo.Optics.INTSQ_loss = 500e-6
+    def plot_loss_series(axB, ifo, lscale=1, **kw):
+        ifo.Optics.INTSQ_loss = 500e-6 * lscale
         totalL, LB = intSqzQuantum(ifo, freq=F_Hz)
-        ifo.Optics.INTSQ_loss = 1000e-6
+        ifo.Optics.INTSQ_loss = 1000e-6 * lscale
         totalM, LB = intSqzQuantum(ifo, freq=F_Hz)
-        ifo.Optics.INTSQ_loss = 2000e-6
+        ifo.Optics.INTSQ_loss = 2000e-6 * lscale
         totalH, LB = intSqzQuantum(ifo, freq=F_Hz)
         kw1 = dict(kw)
         kw1.pop('alpha', None)
-        axB.ax0.loglog(F_Hz, (totalM + CLPSD)**0.5, **kw1)
+        axB.ax0.loglog(F_Hz, (totalM + CTNPSD)**0.5, **kw1)
         kw1['ls'] = '--'
         kw1.pop('label', None)
         kw1['lw'] = 2
@@ -757,45 +753,40 @@ def test_CoupledCav_variants(fpath_join, tpath_join, plotTF, pprint):
         kwf.pop('lw', None)
         kwf.pop('label', None)
         kwf['lw'] = 0.5
-        axB.ax0.fill_between(F_Hz, (totalL + CLPSD)**0.5, (totalH + CLPSD)**0.5, **kwf)
-        budgetD[name + '_500ppm'] = totalL
-        budgetD[name + '_1000ppm'] = totalM
-        budgetD[name + '_2000ppm'] = totalH
+        axB.ax0.fill_between(F_Hz, (totalL + CTNPSD)**0.5, (totalH + CTNPSD)**0.5, **kwf)
         #axB.ax0.loglog(F_Hz, (totalL)**0.5 / 4000, **kw)
         #axB.ax0.loglog(F_Hz, (totalH)**0.5 / 4000, **kw)
 
-    def plot_other_budget(axB, bname, *, name, dashed = False, **kw):
-        budgetApl = gwinc.load_budget(bname, freq=F_Hz)
+    def plot_other_budget(axB, name, dashed = False, **kw):
+        budgetApl = gwinc.load_budget(name, freq=F_Hz)
         aplB = budgetApl.run()
         axB.ax0.loglog(aplB.freq, aplB.asd, **kw)
         kw['ls'] = '--'
         kw.pop('label', None)
         if dashed:
             axB.ax0.loglog(aplB.freq, aplB.Quantum.asd, **kw)
-        budgetD[name] = aplB.Quantum.psd
 
     if True:
         axBpl = mplfigB(size_in=[6.5, 3])
         budget = gwinc.load_budget(fpath_join('Ahat20' + '.yaml'))
         ifo = budget.ifo
-        plot_loss_series(axBpl, ifo, name='Ahat20', label='$\\widehat{\\mathrm{A}}$ (405kW, $G_\\mathrm{int}$=20dB)', lw=2.5, color='#FF6C0C', alpha=0.3, zorder=100)
+        plot_loss_series(axBpl, ifo, label='$\\widehat{\\mathrm{A}}$ (405kW, $G_\\mathrm{int}$=20dB)', lw=2.5, color='#FF6C0C', alpha=0.3, zorder=100)
 
         budget = gwinc.load_budget(fpath_join('Ahat25' + '.yaml'))
         ifo = budget.ifo
-        plot_loss_series(axBpl, ifo, name='Ahat25', label='$\\widehat{\\mathrm{A}}$ (405kW, $G_\\mathrm{int}$=25dB)', lw=2.5, color='#005851', alpha=0.3, zorder=90)
+        plot_loss_series(axBpl, ifo, label='$\\widehat{\\mathrm{A}}$ (405kW, $G_\\mathrm{int}$=25dB)', lw=2.5, color='#005851', alpha=0.3, zorder=90)
 
-        plot_other_budget(axBpl, 'Aplus', name='Apl', label='A+ (750kW)', lw=2, color='black', dashed=True)
+        plot_other_budget(axBpl, 'Aplus', label='A+ (750kW)', lw=2, color='black', dashed=True)
 
-        plot_other_budget(axBpl, fpath_join('AplWide' + '.yaml'), name='AplWB10', label='A+ wideband', lw=2, color='black', alpha=0.5)
-        plot_other_budget(axBpl, fpath_join('AplWide05' + '.yaml'), name='AplWB05', lw=2, color='black', alpha=0.5)
+        plot_other_budget(axBpl, fpath_join('AplWide' + '.yaml'), label='A+ wideband', lw=2, color='black', alpha=0.5)
+        plot_other_budget(axBpl, fpath_join('AplWide05' + '.yaml'), lw=2, color='black', alpha=0.5)
 
         #budgetCE2 = gwinc.load_budget('CE2silica', freq=F_Hz)
         #ce2B = budgetCE2.run()
         #axB.ax0.loglog(ce2B.freq, ce2B.asd, label = 'CE', lw=2, color='blue')
 
         axBpl.ax0.set_ylim(7e-25, 3e-23)
-        axBpl.ax0.set_xlim(min(F_Hz), max(F_Hz))
-        axBpl.ax0.loglog(aplB.freq, CLPSD**0.5, label='A+ classical noise', color='#7A303F', dashes=[2, 1, 3, 1])
+        axBpl.ax0.loglog(aplB.freq, CTNPSD**0.5, label='A+ classical noise', color='#7A303F', dashes=[2, 1, 3, 1])
         axBpl.ax0.legend(loc='upper center', framealpha=1, fontsize=8, ncols=1)
         axBpl.ax0.set_xlabel('Frequency [Hz]')
         axBpl.ax0.set_ylabel('Strain ASD [1/$\\sqrt{\\mathrm{Hz}}$]')
@@ -805,47 +796,34 @@ def test_CoupledCav_variants(fpath_join, tpath_join, plotTF, pprint):
     if True:
         budgetAsh = gwinc.load_budget(fpath_join('Asharp' + '.yaml'), freq=F_Hz)
         ashB = budgetApl.run()
-        CLPSD = ashB.psd - ashB.Quantum.psd
-        budgetD['AShCl'] = CLPSD
+        CTNPSD = ashB.psd - ashB.Quantum.psd
 
         axBsh = mplfigB(size_in=[6.5, 3])
         budget = gwinc.load_budget(fpath_join('AhatSh20' + '.yaml'))
         ifo = budget.ifo
-        plot_loss_series(axBsh, ifo, name='AhatSh20', label='$\\widehat{\\mathrm{A}}^\\sharp$ (860kW, $G_\\mathrm{int}$=20dB)', lw=2.5, color='#FF6C0C', alpha=0.3, zorder=100)
+        plot_loss_series(axBsh, ifo, lscale=3/5, label='$\\widehat{\\mathrm{A}}^\\sharp$ (860kW, $G_\\mathrm{int}$=20dB)', lw=2.5, color='#FF6C0C', alpha=0.3, zorder=100)
 
         budget = gwinc.load_budget(fpath_join('AhatSh25' + '.yaml'))
         ifo = budget.ifo
-        plot_loss_series(axBsh, ifo, name='AhatSh25', label='$\\widehat{\\mathrm{A}}^\\sharp$ (860kW, $G_\\mathrm{int}$=25dB)', lw=2.5, color='#005851', alpha=0.3, zorder=90)
+        plot_loss_series(axBsh, ifo, lscale=3/5, label='$\\widehat{\\mathrm{A}}^\\sharp$ (860kW, $G_\\mathrm{int}$=25dB)', lw=2.5, color='#005851', alpha=0.3, zorder=90)
 
-        plot_other_budget(axBsh, fpath_join('Asharp' + '.yaml'), name='ASh', label='A$^\\sharp$ (1.5MW)', lw=2, color='black', dashed=True)
+        plot_other_budget(axBsh, fpath_join('Asharp' + '.yaml'), label='A$^\\sharp$ (1.5MW)', lw=2, color='black', dashed=True)
 
-        plot_other_budget(axBsh, fpath_join('Asharp_wideband' + '.yaml'), name='AShWB05', label='A$^\\sharp$ wideband', lw=2, color='black', alpha=0.5)
+        plot_other_budget(axBsh, fpath_join('Asharp_wideband' + '.yaml'), label='A$^\\sharp$ wideband', lw=2, color='black', alpha=0.5)
         #plot_other_budget(axBsh, fpath_join('AplWide05' + '.yaml'), lw=2, color='black', alpha=0.5)
 
 
         axBsh.ax0.set_ylim(2e-25, 4e-23)
-        axBsh.ax0.loglog(aplB.freq, CLPSD**0.5, label='A$^\\sharp$ classical noise', color='#7A303F', dashes=[2, 1, 3, 1])
+        axBsh.ax0.loglog(aplB.freq, CTNPSD**0.5, label='A$^\\sharp$ classical noise', color='#7A303F', dashes=[2, 1, 3, 1])
 
         budgetCE2 = gwinc.load_budget('CE2silica', freq=F_Hz)
         ce2B = budgetCE2.run()
         axBsh.ax0.loglog(ce2B.freq, ce2B.asd, label='Cosmic Explorer', lw=2, color='blue', alpha = 0.3)
-        budgetD['CE'] = ce2B.psd
-        budgetD['CEQu'] = ce2B.Quantum.psd
 
         axBsh.ax0.legend(loc='upper center', framealpha=1, fontsize=8, ncols=2)
-        axBsh.ax0.set_xlim(min(F_Hz), max(F_Hz))
         axBsh.ax0.set_xlabel('Frequency [Hz]')
         axBsh.ax0.set_ylabel('Strain ASD [1/$\\sqrt{\\mathrm{Hz}}$]')
         axBsh.save(tpath_join('A#cmp'))
-    print(', '.join(budgetD.keys()))
-    arr = np.array(list(budgetD.values())).T
-    print(arr.shape)
-    np.savetxt(
-        tpath_join('budgets.csv'),
-        arr,
-        delimiter=",",
-        header=', '.join(budgetD.keys()),
-    )
     return
 
 

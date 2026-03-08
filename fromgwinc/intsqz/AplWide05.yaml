@@ -1,0 +1,30 @@
++inherit: 'Aplus.yaml'
+
+Suspension:
+    RPdynamics: FreeMass
+
+Optics:
+    is_OPD: False
+
+    SRM:
+      Transmittance: .05
+
+  #ifo.Optics.MM_INTSQZ = 0.00
+Squeezer:
+    MM_SQZ_OMC: 0  # 0.1
+    direct_mm_sqz_ifo: True
+    FilterCavity:
+        L_mm: 0  # 0.5
+
+    Type: 'Freq Dependent'
+    AmplitudedB: 14                 # SQZ amplitude [dB]
+    InjectionLoss: 0.05             # power loss to sqz
+    SQZAngle: 0                     # SQZ phase [radians]
+    LOAngleRMS: 30e-3               # quadrature noise [radians]
+
+    # Good settings for low power 5% item
+    FilterCavity:
+      Lrt: 60e-6                    # round-trip loss in the cavity
+      Rot: 0                        # phase rotation after cavity
+      fdetune: -16              # detuning [Hz]
+      Ti: .40e-3                    # input mirror transmission [Power]

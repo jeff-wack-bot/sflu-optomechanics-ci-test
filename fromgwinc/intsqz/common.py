@@ -250,6 +250,7 @@ def standardize_params(ifo):
         params.Pin_W = ifo.Laser.Power
         power = ifo_power(ifo)
         params.Parm_W = power.parm
+    print(f"ARM POWER {power.parm}, BS POWER: {power.pbs}, fixed arm_power {params.arm_power_fixed}")
 
     # optomechanical plant
     plant_type = ifo.Optics.get('Type', 'DRFPMI')

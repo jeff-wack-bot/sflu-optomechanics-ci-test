@@ -293,25 +293,36 @@ class SQZEdge:
             MM_fr=1,
             MM_to=1,
             mlib=MatrixLib(nhom=0),
+            dual_unphysical=False,
     ):
         self.name = name
         self.sqzDB = sqzDB
         self.sqzANGrad = sqzANGdeg / 180 * np.pi
         self.MM_fr = mlib.promote(MM_fr)
         self.MM_to = mlib.promote(MM_to)
+        self.dual_unphysical = dual_unphysical
         self.mlib = mlib
 
     def _edges(self):
         """
         This works equivalently in statespace
         """
-        edge_map = {
-            self.name:
-            self.MM_to @
-            self.mlib.Mrotation(self.sqzANGrad) @
-            self.mlib.SQZc(10**(self.sqzDB/10), 10**(-self.sqzDB/10)) @
-            self.mlib.Mrotation(-self.sqzANGrad) @ self.MM_fr,
-        }
+        if not self.dual_unphysical:
+            edge_map = {
+                self.name:
+                self.MM_to @
+                self.mlib.Mrotation(self.sqzANGrad) @
+                self.mlib.SQZc(10**(self.sqzDB/10), 10**(-self.sqzDB/10)) @
+                self.mlib.Mrotation(-self.sqzANGrad) @ self.MM_fr,
+            }
+        else:
+            edge_map = {
+                self.name:
+                self.MM_to @
+                self.mlib.Mrotation(self.sqzANGrad) @
+                self.mlib.SQZc(10**(self.sqzDB/10), 10**(self.sqzDB/10)) @
+                self.mlib.Mrotation(-self.sqzANGrad) @ self.MM_fr,
+            }
         return edge_map
 
     def edgesDC(self):

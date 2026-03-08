@@ -1,0 +1,92 @@
++inherit: 'Aplus.yaml'
+
+Laser:
+  Power: <unset>
+  ArmPower: 1.5e6
+
+Optics:
+  PhotoDetectorEfficiency: 0.965
+  BSLoss: 500e-6
+
+Squeezer:
+  AmplitudedB: 18
+  SQZAngleRMS: 10e-3
+  InjectionLoss: 0.04
+
+  # settings for a 100 kg test mass
+  FilterCavity:
+    Ti: 1.01e-3
+    fdetune: -40.05
+    Lrt: 30e-6
+
+Infrastructure:
+    ResidualGas:
+        SqueezedFilm:
+            ExcessDamping: 2
+            DiffusionTime: 160e-6
+
+Seismic:
+  Omicron: 2
+
+Materials:
+  MassRadius: 0.225
+  MassThickness: 0.30
+
+Suspension:
+  Fiber:
+    Radius: 226e-6
+    EndRadius: 650e-6
+
+  # Note stage numbering: mirror is at beginning of stack, not end
+  Stage:
+    # Stage1
+    - Mass: 104.4                   # kg;
+      Length: 0.6                # m
+      Dilution: .nan              #
+      K: .nan                     # N/m; vertical spring constant
+      WireRadius: .nan            # m
+      Blade: .nan                 # blade thickness
+      WireMaterial: 'Silica'
+      BladeMaterial: 'Silica'
+      NWires: 4
+
+    # Stage2
+    - Mass: 104.4
+      Length: 0.34
+      Dilution: .nan
+      K: 11.6e3
+      WireRadius: 500e-6
+      Blade: 2.5e-3
+      NWires: 4
+      WireMaterial: 'C70Steel'
+      BladeMaterial: 'MaragingSteel'
+
+    # Stage3
+    - Mass: 87
+      Length: 0.34
+      Dilution: .nan
+      K: 19.5e3
+      WireRadius: 600e-6
+      Blade: 3e-3
+      NWires: 4
+      WireMaterial: 'C70Steel'
+      BladeMaterial: 'MaragingSteel'
+
+    # Stage4
+    - Mass: 123
+      Length: 0.34
+      Dilution: .nan
+      K: 13.7e3
+      WireRadius: 700e-6
+      Blade: 3.5e-3
+      NWires: 4
+      WireMaterial: 'C70Steel'
+      BladeMaterial: 'MaragingSteel'
+
+# For internal accounting; not used independently in gwinc
+LossBudget:
+    OPO: 0.01
+    Faraday: 0.005
+    FCpickoff: 0.01
+    OutputSteering: 0.01
+    OMCandPDs: 0.02

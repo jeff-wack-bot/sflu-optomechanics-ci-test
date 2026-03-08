@@ -1,0 +1,44 @@
++inherit: 'Asharp.yaml'
+
+Suspension:
+    RPdynamics: FreeMass
+
+Laser:
+  Power: 170
+  ArmPower: <unset>
+
+Optics:
+    MM_IFO_OMC: 0  # 0.02
+    MM_IFO_OMCphi: 0
+    MM_ARM_SRC: 0.0005
+    MM_INTSQZ: 0.01
+    MM_SEC_ARMphi: -0.2
+    MM_XARM_YARM: 0.0 # 1e-3
+    MM_SRC_PRC: 0  # 0.01
+    MM_SRC_PRCphi: 0.38
+    is_OPD: False
+
+    SRM:
+      Transmittance: .025
+    ITM:
+      Transmittance: .025
+
+intSqueezer:
+  AmplitudedB: 20
+
+  #ifo.Optics.MM_INTSQZ = 0.00
+Squeezer:
+    MM_SQZ_OMC: 0  # 0.1
+    direct_mm_sqz_ifo: True
+
+    Type: 'Freq Dependent'
+    AmplitudedB: 14                 # SQZ amplitude [dB]
+    SQZAngle: 0                     # SQZ phase [radians]
+
+    # Good settings for low power 5% item
+    FilterCavity:
+      L_mm: 0  # 0.5
+      Lrt: 30e-6                    # round-trip loss in the cavity
+      Rot: 0                        # phase rotation after cavity
+      fdetune: -45              # detuning [Hz]
+      Ti: 0.44e-3                    # input mirror transmission [Power]
