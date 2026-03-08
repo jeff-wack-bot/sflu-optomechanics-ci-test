@@ -1,0 +1,24 @@
++inherit: 'Aplus.yaml'
+
+Suspension:
+    RPdynamics: FreeMass
+
+Optics:
+    MM_IFO_OMC: 0  # 0.02
+    MM_IFO_OMCphi: 0
+    MM_ARM_SRC: 0.0005
+    MM_INTSQZ: 0.01
+    MM_SEC_ARMphi: -0.2
+    MM_XARM_YARM: 0.0 # 1e-3
+    MM_SRC_PRC: 0  # 0.01
+    MM_SRC_PRCphi: 0.38
+    is_OPD: False
+
+    SRM:
+      Transmittance: .014
+    ITM:
+      Transmittance: .014
+
+intSqueezer:
+  AmplitudedB: 15
+

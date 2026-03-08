@@ -43,5 +43,5 @@ Squeezer:
     FilterCavity:
       Lrt: 60e-6                    # round-trip loss in the cavity
       Rot: 0                        # phase rotation after cavity
-      fdetune: -80              # detuning [Hz]
-      Ti: 2.0e-3                    # input mirror transmission [Power]
+      fdetune: -83              # detuning [Hz]
+      Ti: .84e-3                    # input mirror transmission [Power]

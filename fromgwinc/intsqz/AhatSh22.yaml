@@ -1,11 +1,11 @@
-+inherit: 'Aplus.yaml'
++inherit: 'Asharp.yaml'
 
 Suspension:
     RPdynamics: FreeMass
 
 Laser:
-  # needed for nominal BS power
-  Power: 80
+  Power: 170
+  ArmPower: <unset>
 
 Optics:
     MM_IFO_OMC: 0  # 0.02
@@ -30,18 +30,16 @@ intSqueezer:
 Squeezer:
     MM_SQZ_OMC: 0  # 0.1
     direct_mm_sqz_ifo: True
-    FilterCavity:
-        L_mm: 0  # 0.5
 
     Type: 'Freq Dependent'
     AmplitudedB: 14                 # SQZ amplitude [dB]
-    InjectionLoss: 0.05             # power loss to sqz
     SQZAngle: 0                     # SQZ phase [radians]
-    LOAngleRMS: 30e-3               # quadrature noise [radians]
 
     # Good settings for low power 5% item
     FilterCavity:
-      Lrt: 60e-6                    # round-trip loss in the cavity
+      L_mm: 0  # 0.5
+      Lrt: 30e-6                    # round-trip loss in the cavity
       Rot: 0                        # phase rotation after cavity
-      fdetune: -80              # detuning [Hz]
-      Ti: 2.0e-3                    # input mirror transmission [Power]
+      Ti: 1.70e-3
+      fdetune: -68.
+ 

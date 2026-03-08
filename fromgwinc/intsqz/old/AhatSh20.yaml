@@ -24,7 +24,7 @@ Optics:
       Transmittance: .025
 
 intSqueezer:
-  AmplitudedB: 20
+  AmplitudedB: 17
 
   #ifo.Optics.MM_INTSQZ = 0.00
 Squeezer:

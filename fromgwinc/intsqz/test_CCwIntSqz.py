@@ -263,7 +263,7 @@ def CoupledCavity(
     edge_objs.INTSQZ_armto = optics.SQZEdge(
         name       = 'INTSQZ.armto',
         sqzDB      = -ifo.intSqueezer.AmplitudedB,
-        sqzANGdeg = -0 + 45,
+        sqzANGdeg = -0 - 90,
         MM_to      = MM_INTSQZ,
         MM_fr      = mlib.Minv(MM_INTSQZ),
         mlib       = mlib,
@@ -273,7 +273,7 @@ def CoupledCavity(
         name       = 'INTSQZ.armfr',
         sqzDB      = ifo.intSqueezer.AmplitudedB,
         # this micro angle detuning is for some MM loss compensation
-        sqzANGdeg = -0 + 45 - 0*.005,
+        sqzANGdeg = -0 - 90 - 0*.005,
         MM_to      = MM_INTSQZ,
         MM_fr      = mlib.Minv(MM_INTSQZ),
         #MM_fr      = get_MM_fr(params.MM.SEC_ARM),
@@ -776,13 +776,22 @@ def test_CoupledCav_variants(fpath_join, tpath_join, plotTF, pprint):
 
     if True:
         axBpl = mplfigB(size_in=[6.5, 3])
-        budget = gwinc.load_budget(fpath_join('Ahat20' + '.yaml'))
+        budget = gwinc.load_budget(fpath_join('Ahat17' + '.yaml'))
         ifo = budget.ifo
-        plot_loss_series(axBpl, ifo, name='Ahat20', label='$\\widehat{\\mathrm{A}}$ (405kW, $G_\\mathrm{int}$=20dB)', lw=2.5, color='#FF6C0C', alpha=0.3, zorder=100)
+        plot_loss_series(axBpl, ifo, name='Ahat17', label='$\\widehat{\\mathrm{A}}$ (405kW, $G_\\mathrm{int}$=17dB)', lw=2.5, color='#FF6C0C', alpha=0.3, zorder=100)
 
-        budget = gwinc.load_budget(fpath_join('Ahat25' + '.yaml'))
+        budget = gwinc.load_budget(fpath_join('Ahat22' + '.yaml'))
         ifo = budget.ifo
-        plot_loss_series(axBpl, ifo, name='Ahat25', label='$\\widehat{\\mathrm{A}}$ (405kW, $G_\\mathrm{int}$=25dB)', lw=2.5, color='#005851', alpha=0.3, zorder=90)
+        plot_loss_series(axBpl, ifo, name='Ahat22', label='$\\widehat{\\mathrm{A}}$ (405kW, $G_\\mathrm{int}$=22dB)', lw=2.5, color='#005851', alpha=0.3, zorder=90)
+
+        # testing
+        if False:
+            budget = gwinc.load_budget(fpath_join('AplusTest' + '.yaml'))
+            ifo = budget.ifo
+            ifo.Optics.MM_INTSQZ = 0
+            #ifo.intSqueezer = Struct()
+            #ifo.intSqueezer.AmplitudedB = 0
+            plot_loss_series(axBpl, ifo, name='Apluss', label='Apluss', lw=2.5, color='magenta', alpha=0.3, zorder=90)
 
         plot_other_budget(axBpl, 'Aplus', name='Apl', label='A+ (750kW)', lw=2, color='black', dashed=True)
 
@@ -793,7 +802,7 @@ def test_CoupledCav_variants(fpath_join, tpath_join, plotTF, pprint):
         #ce2B = budgetCE2.run()
         #axB.ax0.loglog(ce2B.freq, ce2B.asd, label = 'CE', lw=2, color='blue')
 
-        axBpl.ax0.set_ylim(7e-25, 3e-23)
+        axBpl.ax0.set_ylim(5e-25, 3e-23)
         axBpl.ax0.set_xlim(min(F_Hz), max(F_Hz))
         axBpl.ax0.loglog(aplB.freq, CLPSD**0.5, label='A+ classical noise', color='#7A303F', dashes=[2, 1, 3, 1])
         axBpl.ax0.legend(loc='upper center', framealpha=1, fontsize=8, ncols=1)
@@ -809,13 +818,13 @@ def test_CoupledCav_variants(fpath_join, tpath_join, plotTF, pprint):
         budgetD['AShCl'] = CLPSD
 
         axBsh = mplfigB(size_in=[6.5, 3])
-        budget = gwinc.load_budget(fpath_join('AhatSh20' + '.yaml'))
+        budget = gwinc.load_budget(fpath_join('AhatSh17' + '.yaml'))
         ifo = budget.ifo
-        plot_loss_series(axBsh, ifo, name='AhatSh20', label='$\\widehat{\\mathrm{A}}^\\sharp$ (860kW, $G_\\mathrm{int}$=20dB)', lw=2.5, color='#FF6C0C', alpha=0.3, zorder=100)
+        plot_loss_series(axBsh, ifo, name='AhatSh17', label='$\\widehat{\\mathrm{A}}^\\sharp$ (860kW, $G_\\mathrm{int}$=17dB)', lw=2.5, color='#FF6C0C', alpha=0.3, zorder=100)
 
-        budget = gwinc.load_budget(fpath_join('AhatSh25' + '.yaml'))
+        budget = gwinc.load_budget(fpath_join('AhatSh22' + '.yaml'))
         ifo = budget.ifo
-        plot_loss_series(axBsh, ifo, name='AhatSh25', label='$\\widehat{\\mathrm{A}}^\\sharp$ (860kW, $G_\\mathrm{int}$=25dB)', lw=2.5, color='#005851', alpha=0.3, zorder=90)
+        plot_loss_series(axBsh, ifo, name='AhatSh22', label='$\\widehat{\\mathrm{A}}^\\sharp$ (860kW, $G_\\mathrm{int}$=22dB)', lw=2.5, color='#005851', alpha=0.3, zorder=90)
 
         plot_other_budget(axBsh, fpath_join('Asharp' + '.yaml'), name='ASh', label='A$^\\sharp$ (1.5MW)', lw=2, color='black', dashed=True)
 

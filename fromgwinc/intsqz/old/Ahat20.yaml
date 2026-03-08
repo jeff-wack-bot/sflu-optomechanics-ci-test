@@ -24,7 +24,7 @@ Optics:
       Transmittance: .025
 
 intSqueezer:
-  AmplitudedB: 20
+  AmplitudedB: 17
 
   #ifo.Optics.MM_INTSQZ = 0.00
 Squeezer:
@@ -43,5 +43,5 @@ Squeezer:
     FilterCavity:
       Lrt: 60e-6                    # round-trip loss in the cavity
       Rot: 0                        # phase rotation after cavity
-      fdetune: -50              # detuning [Hz]
-      Ti: .55e-3                    # input mirror transmission [Power]
+      fdetune: -45.78               # detuning [Hz]
+      Ti: 1.2e-3                    # input mirror transmission [Power]
