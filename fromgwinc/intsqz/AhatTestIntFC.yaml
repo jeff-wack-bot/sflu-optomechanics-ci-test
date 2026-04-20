@@ -1,21 +1,17 @@
 +inherit: 'AhatTest.yaml'
 
 intSqueezer:
-  AmplitudedB: 30
+
   FilterCavity:
     L: 300                  # cavity length [m] (same as LIGO FC)
-    Ti: 1e-3              # input mirror transmission [power]
-    Te: 1e-0                # end mirror transmission [power] (high reflector)
+    Ti: .38e-3              # input mirror transmission [power]
+    Te: 1e-9                # end mirror transmission [power] (high reflector)
     Lrt: 1e-9              # round-trip loss
-    fdetune: -0           # detuning [Hz]
+    fdetune: -32           # detuning [Hz]
+    #fdetune: -20           # detuning [Hz]
+    #fdetune: -250002           # detuning [Hz]
 
 Optics:
-  SRM:
-    Transmittance: 0.1
   Quadrature:
-    dc: 1.5707963                 # pi/2 # demod/detection/homodyne phase
-    #dc: -0.8                 # pi/2 # demod/detection/homodyne phase
-
-# Turn off external squeezing
-Squeezer:
-  AmplitudedB: 0
+    #dc: 1.5707963                 # pi/2 # demod/detection/homodyne phase
+    #dc: 0.1                 # pi/2 # demod/detection/homodyne phase

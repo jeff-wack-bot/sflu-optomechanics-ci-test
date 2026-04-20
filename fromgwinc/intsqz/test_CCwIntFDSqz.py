@@ -210,7 +210,7 @@ def CoupledCavityIntFC(
     IFC_L_rt = IFC_L_m
     FSR_Hz = const.c / IFC_L_rt
     IFC_detune_Hz = ifc.fdetune
-    IFC_detune_m = -IFC_detune_Hz / FSR_Hz * lambda_m / 2
+    IFC_detune_m = -IFC_detune_Hz / FSR_Hz * lambda_m
     IFC_detune_rad = -2 * np.pi / lambda_m * IFC_detune_m
     IFC_gouy_rad_rt = 2 * IFC_gouy_rad
 
@@ -254,8 +254,8 @@ def CoupledCavityIntFC(
     edge_objs.IFCBS = optics.BSEdge(
         name = 'IFCBS',
         Thr  = IFC_Ti,
-        Lhr_bkA  = IFC_loss_rt,
-        Lhr = ifo.Optics.INTSQ_loss + params.Loss.SEC_rt/2,
+        Lhr_bkA  = 1e-10,#IFC_loss_rt,
+        Lhr = 1e-10,#,ifo.Optics.INTSQ_loss + params.Loss.SEC_rt/2,
         mlib = mlib,
     )
 
@@ -304,7 +304,7 @@ def CoupledCavityIntFC(
     edge_objs.INTSQZ_armto = optics.SQZEdge(
         name       = 'INTSQZ.armto',
         sqzDB      = -ifo.intSqueezer.AmplitudedB,
-        sqzANGdeg  = -0 - 90,
+        sqzANGdeg  = 0 - 90,
         MM_to      = MM_INTSQZ,
         MM_fr      = mlib.Minv(MM_INTSQZ),
         mlib       = mlib,
@@ -429,6 +429,7 @@ def _compute_intFDsqz_budget(sfluB, F_Hz, ifo, use_SS=True):
     ASQZ_DB        = params.ANTISQZ_DB
     SQZ_angle_rad  = params.alpha
     HD_angle_rad   = params.LO_angle
+    print("HD ANGLE: ", HD_angle_rad)
 
     sqzV = 10**(-SQZ_DB/10.)
     asqzV = 10**(ASQZ_DB/10.)
@@ -530,6 +531,9 @@ def test_CCwIntFDSqz(fpath_join, tpath_join, plotTF, pprint):
     #
     # --- comparison with non-FC internal squeezing ---
     from . import test_CCwIntSqz
+    budget = gwinc.load_budget(fpath_join('AhatTest.yaml'))
+    ifo = budget.ifo
+    ifo.Optics.INTSQ_loss = 1000e-6
     sfluB_noFC = test_CCwIntSqz.sflu_CoupledCav()
     sflu_noFC = sfluB_noFC.sflu
     sflu_noFC.reduce_auto()
