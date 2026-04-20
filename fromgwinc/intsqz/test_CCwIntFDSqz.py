@@ -87,16 +87,16 @@ def sflu_CCwIntFDSqz(use_ITMRP=True):
         ("ETM.fr.i", "ITM.fr.o"): "ARM.L",
         ("ITM.fr.i", "ETM.fr.o"): "ARM.L",
         # signal extraction cavity (ITM to IFCBS B-port)
-        ("ITM.bk.i", "IFCBS.bkB.o"): "SEC.L.to",
-        ("IFCBS.bkB.i", "ITM.bk.o"): "SEC.L.fr",
+        ("ITM.bk.i", "IFCBS.frB.o"): "SEC.L.to",
+        ("IFCBS.frB.i", "ITM.bk.o"): "SEC.L.fr",
         # traveling wave: self-loop on fr ports
         # mode 1: frA.o → IFC.L → frB.i
-        ("IFCBS.frB.i", "IFCBS.frA.o"): "IFC.L",
+        ("IFCBS.bkB.i", "IFCBS.bkA.o"): "IFC.L",
         # mode 2: frB.o → IFC.L → frA.i
-        ("IFCBS.frA.i", "IFCBS.frB.o"): "IFC.L",
+        ("IFCBS.bkA.i", "IFCBS.bkB.o"): "IFC.L",
         # SQZ edges (IFCBS bkA to SEM)
-        ("SEM.fr.i", "IFCBS.bkA.o"): "INTSQZ.armfr",
-        ("IFCBS.bkA.i", "SEM.fr.o"): "INTSQZ.armto",
+        ("SEM.fr.i", "IFCBS.frA.o"): "INTSQZ.armfr",
+        ("IFCBS.frA.i", "SEM.fr.o"): "INTSQZ.armto",
     })
 
     ifo["SEM"].locations.update({
@@ -143,7 +143,9 @@ def sflu_CCwIntFDSqz(use_ITMRP=True):
             ],
             SEC=["SEM.frL.i"],
             INTSQZ=[
+                #"IFCBS.frAL.i",
                 "IFCBS.bkAL.i",
+                #"IFCBS.frAL2.i",
                 "IFCBS.bkAL2.i",
             ],
             LossInjection=[
@@ -252,8 +254,8 @@ def CoupledCavityIntFC(
     edge_objs.IFCBS = optics.BSEdge(
         name = 'IFCBS',
         Thr  = IFC_Ti,
-        Lhr  = IFC_loss_rt,
-        Lhr_bkA = ifo.Optics.INTSQ_loss + params.Loss.SEC_rt/2,
+        Lhr_bkA  = IFC_loss_rt,
+        Lhr = ifo.Optics.INTSQ_loss + params.Loss.SEC_rt/2,
         mlib = mlib,
     )
 
@@ -349,6 +351,8 @@ def CoupledCavityIntFC(
         "ETM.frL.i",
         "ITM.frL.i",
         "SEM.frL.i",
+        #"IFCBS.frAL.i",
+        #"IFCBS.frAL2.i",
         "IFCBS.bkAL.i",
         "IFCBS.bkAL2.i",
     }

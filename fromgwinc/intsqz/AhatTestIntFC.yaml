@@ -1,13 +1,13 @@
 +inherit: 'AhatTest.yaml'
 
 intSqueezer:
-  AmplitudedB: 22
+  AmplitudedB: 20
   FilterCavity:
     L: 300                  # cavity length [m] (same as LIGO FC)
     Ti: 3e-3              # input mirror transmission [power]
     Te: 1e-6                # end mirror transmission [power] (high reflector)
-    Lrt: 60e-6              # round-trip loss
-    fdetune: -300            # detuning [Hz] 
+    Lrt: 100e-6              # round-trip loss
+    fdetune: 300            # detuning [Hz]
 
 Optics:
   SRM:
