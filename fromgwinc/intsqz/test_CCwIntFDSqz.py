@@ -77,7 +77,7 @@ def sflu_CCwIntFDSqz(use_ITMRP=True):
     # bkA→left toward SEM) and the BS plate appears at 45°.
     # bkA face loss models internal squeezing beamsplitter losses.
     ifo.subgraph_add(
-        "IFCBS", elements.BeamSplitterElement(loss_bkA_ports=True),
+        "IFCBS", elements.BeamSplitterElement(),
         translation_xy=(0, -15),
         rotation_deg=135,
     )
@@ -142,12 +142,7 @@ def sflu_CCwIntFDSqz(use_ITMRP=True):
                 "ITM.frL.i",
             ],
             SEC=["SEM.frL.i"],
-            INTSQZ=[
-                #"IFCBS.frAL.i",
-                "IFCBS.bkAL.i",
-                #"IFCBS.frAL2.i",
-                "IFCBS.bkAL2.i",
-            ],
+            INTSQZ=[],
             LossInjection=[
                 "Loss_injection",
             ],
@@ -254,8 +249,7 @@ def CoupledCavityIntFC(
     edge_objs.IFCBS = optics.BSEdge(
         name = 'IFCBS',
         Thr  = IFC_Ti,
-        Lhr_bkA  = 1e-10,#IFC_loss_rt,
-        Lhr = 1e-10,#,ifo.Optics.INTSQ_loss + params.Loss.SEC_rt/2,
+        Lhr  = 0,
         mlib = mlib,
     )
 
@@ -351,10 +345,6 @@ def CoupledCavityIntFC(
         "ETM.frL.i",
         "ITM.frL.i",
         "SEM.frL.i",
-        #"IFCBS.frAL.i",
-        #"IFCBS.frAL2.i",
-        "IFCBS.bkAL.i",
-        "IFCBS.bkAL2.i",
     }
 
     if use_SS:
