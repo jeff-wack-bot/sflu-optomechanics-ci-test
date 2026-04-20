@@ -21,7 +21,7 @@ Optics:
     SRM:
       Transmittance: .030
     ITM:
-      Transmittance: .030
+      Transmittance: .014
 
 intSqueezer:
   AmplitudedB: 22
