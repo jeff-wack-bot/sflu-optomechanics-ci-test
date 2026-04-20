@@ -12,32 +12,17 @@ import pytest
 _options_added = False
 
 def pytest_addoption(parser):
+    # --plot and --no-preclear are registered by the wield.pytest plugin
+    # (loaded via the pytest11 entry point), so don't re-add them here.
     global _options_added
-    #this check fixes issues if this gets run multiple times from sub conftest.py's
     if _options_added:
         return
-    else:
-        _options_added = True
-
-    parser.addoption(
-        "--plot",
-        action="store_true",
-        dest = 'plot',
-        help = "Have tests update plots (it is slow)",
-    )
+    _options_added = True
 
     parser.addoption(
         "--do-stresstest",
         action = "store_true",
         help   = "Run slow repeated stress tests"
-    )
-
-    parser.addoption(
-        "--no-preclear",
-        action="store_true",
-        default=False,
-        dest='no_preclear',
-        help="Do not preclear tpaths",
     )
 
 
