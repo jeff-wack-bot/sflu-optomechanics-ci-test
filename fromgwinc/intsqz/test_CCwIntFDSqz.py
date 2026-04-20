@@ -23,13 +23,13 @@ from sflu_components.lib import (
     adjoint,
     Minv,
 )
-from intsqz.lib import MatsHelper, Vnorm_sq, Vnorm_sqA
-from intsqz import optics
+from .lib import MatsHelper, Vnorm_sq, Vnorm_sqA
+from . import optics
 
 from gwinc.struct import Struct
 from gwinc import const
 
-from intsqz.common import standardize_params, arm_gouyRT
+from .common import standardize_params, arm_gouyRT
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -510,7 +510,7 @@ def test_CCwIntFDSqz(fpath_join, tpath_join, plotTF, pprint):
     aplQB = aplB.Quantum
     
     # load internal FD squeezing config
-    budget = gwinc.load_budget(fpath_join('../configs/AhatTestIntFC.yaml')) 
+    budget = gwinc.load_budget(fpath_join('AhatTestIntFC.yaml')) 
     ifo = budget.ifo
 
     ifo.Optics.INTSQ_loss = 1000e-6
@@ -525,7 +525,7 @@ def test_CCwIntFDSqz(fpath_join, tpath_join, plotTF, pprint):
 
     #
     # --- comparison with non-FC internal squeezing ---
-    from intsqz import test_CCwIntSqz
+    from . import test_CCwIntSqz
     sfluB_noFC = test_CCwIntSqz.sflu_CoupledCav()
     sflu_noFC = sfluB_noFC.sflu
     sflu_noFC.reduce_auto()

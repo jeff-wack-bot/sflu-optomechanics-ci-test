@@ -16,13 +16,13 @@ import gwinc
 from sflu_components.lib import (
     adjoint,
 )
-from intsqz.lib import MatsHelper, Vnorm_sq, Vnorm_sqA
-from intsqz import optics
+from .lib import MatsHelper, Vnorm_sq, Vnorm_sqA
+from . import optics
 
 from gwinc.struct import Struct
 from gwinc import const
 
-from intsqz.common import standardize_params, arm_gouyRT
+from .common import standardize_params, arm_gouyRT
 
 from .test_CCwIntFDSqz import (
     sflu_CCwIntFDSqz,
@@ -61,7 +61,7 @@ def test_intFDsqz_param_sweep(fpath_join, tpath_join, plotTF, pprint):
     aplQB = aplB.Quantum
 
     # base configuration
-    budget = gwinc.load_budget(fpath_join('../configs/AhatTestIntFC.yaml'))
+    budget = gwinc.load_budget(fpath_join('AhatTestIntFC.yaml'))
     ifo_base = budget.ifo
     ifo_base.Optics.INTSQ_loss = 1000e-6
 
@@ -162,7 +162,7 @@ def test_intFDsqz_homodyne_sweep(fpath_join, tpath_join, plotTF, pprint):
     aplQB = aplB.Quantum
 
     # base configuration
-    budget = gwinc.load_budget(fpath_join('../configs/AhatTestIntFC.yaml'))
+    budget = gwinc.load_budget(fpath_join('AhatTestIntFC.yaml'))
     ifo_base = budget.ifo
     ifo_base.Optics.INTSQ_loss = 1000e-6
 
@@ -228,8 +228,8 @@ def _compute_d_sense_CC(F_Hz, ifo, use_SS=True):
 
     Uses the same topology as test_CCwIntSqz (CoupledCavity).
     """
-    from intsqz import test_CCwIntSqz
-    from intsqz import FilterCavity
+    from . import test_CCwIntSqz
+    from . import FilterCavity
 
     sfluB = test_CCwIntSqz.sflu_CoupledCav()
     sflu = sfluB.sflu
@@ -286,11 +286,11 @@ def test_signal_response_comparison(fpath_join, tpath_join, plotTF, pprint):
     F_Hz = np.geomspace(10, 30e3, 1000)
 
     # load configs
-    budget_intFC = gwinc.load_budget(fpath_join('../configs/AhatTestIntFC.yaml'))
+    budget_intFC = gwinc.load_budget(fpath_join('AhatTestIntFC.yaml'))
     ifo_intFC = budget_intFC.ifo
     ifo_intFC.Optics.INTSQ_loss = 1000e-6
 
-    budget_intSqz = gwinc.load_budget(fpath_join('../configs/AhatTest.yaml'))
+    budget_intSqz = gwinc.load_budget(fpath_join('AhatTest.yaml'))
     ifo_intSqz = budget_intSqz.ifo
     ifo_intSqz.Optics.INTSQ_loss = 1000e-6
 
