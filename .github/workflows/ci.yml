@@ -137,8 +137,29 @@ jobs:
 
       # --strict fails if a documented example goes missing, stops producing
       # figures, or a new example appears with no page.
+      #
+      # Logged to a file: the example run emits far more output than the log
+      # viewer will show, and it truncates exactly where the interesting part
+      # begins. On failure the tail -- which holds the "Problems:" summary --
+      # is echoed, and the whole log is uploaded below either way.
       - name: Build documentation
-        run: make docs-site PYTHON=python
+        run: |
+          if ! make docs-site PYTHON=python > docs-build.log 2>&1; then
+            echo "::group::last 200 lines of docs-build.log"
+            tail -n 200 docs-build.log
+            echo "::endgroup::"
+            exit 1
+          fi
+          tail -n 20 docs-build.log
+
+      - name: Upload documentation build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-build-log
+          path: docs-build.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Upload test outputs
         if: always()
