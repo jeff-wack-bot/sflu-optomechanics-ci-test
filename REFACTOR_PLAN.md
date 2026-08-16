@@ -466,10 +466,19 @@ Points 2 and 3 were caught *because* `--strict` refuses to publish a page with
 no figures. Without that check the site would have deployed, looking complete
 and containing nothing.
 
-**Still untested:** the `deploy-pages` job. GitHub Pages is not available for a
-private repository on this account, so the deployment itself never ran. The
-`ci` job passes end to end and uploads the built site as an artifact -- 14
-pages, 55 images -- so only the final publish step is unverified.
+**The pipeline is green end to end**, including the Pages deployment:
+
+  <https://jeff-wack-bot.github.io/sflu-optomechanics-ci-test/>
+
+Verified live: 13 of 13 example pages and 55 of 55 figures return HTTP 200.
+
+That scratch repository had to be made **public** to get there -- GitHub Pages
+is not served from a private repository on a free plan. It holds this refactor
+branch only, and it is a CI test bed, not the home of the project; the real
+remote is still `git.ligo.org`. If this workflow moves back to GitLab, the
+`pages` job needs rewriting for GitLab Pages, but everything else in it (the
+guard tolerances, the docs `--strict` gate, the keyless dependency clone)
+carries over unchanged.
 
 ### The docs build now fails loudly
 
