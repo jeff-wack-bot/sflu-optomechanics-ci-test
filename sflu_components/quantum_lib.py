@@ -1,9 +1,27 @@
-'''Functions to calculate quantum noise
+"""
+Fixed-dimension quadrature matrix helpers (2, 4 and 6 dimensional).
 
-'''
+Vendored, byte for byte apart from the import below, from a file that was
+sitting in ``site-packages/gwinc/noise/quantum_lib.py`` on one developer
+machine. It is not part of any gwinc release: the installed distribution's
+RECORD does not list it, so it had been hand-copied into the package
+directory. Six example modules imported it as ``gwinc.noise.quantum_lib``,
+which meant they only ran on a machine where someone had done that. CI
+proved the point by failing with ``No module named gwinc.noise.quantum_lib``.
+
+Superseded by :mod:`sflu_components.lib`, whose ``MatrixLib`` generalises the
+fixed ``mats_planewave`` / ``mats_mode_mismatch`` structs to any number of
+higher-order modes. Kept because ``models/`` and
+``optics/test_simple_cavities.py`` still use it, and because it is **not**
+interchangeable with ``lib``: this ``Vnorm_sq`` computes ``M @ adjoint(M)``
+where ``lib``'s computes ``adjoint(M) @ M``. Port callers deliberately, one at
+a time, checking the numbers.
+
+The only edit is the Struct import, which was relative to the gwinc package.
+"""
 from __future__ import division
 import numpy as np
-from ..struct import Struct
+from gwinc.struct import Struct
 
 
 def Minv(M):

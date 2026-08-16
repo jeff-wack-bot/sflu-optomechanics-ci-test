@@ -38,10 +38,17 @@ actually use. The relationship is documented in `docs/DEPENDENCIES.md`.
 
 Includes `test/test_FP.py`, byte-identical to `fromgwinc/intsqz/test_FP.py`.
 
-### `noise/` — `quantum_lib.py`, `quantum2.py` (493 lines)
+### `noise/` — `quantum2.py`
 
-Same problem: `from ..struct import Struct`. Note that live code importing
-`gwinc.noise.quantum_lib` is reaching the **installed pygwinc**, not this copy.
+Same problem: `from ..struct import Struct`.
+
+`quantum_lib.py` used to sit here too. It turned out to be load-bearing: six
+example modules imported it as `gwinc.noise.quantum_lib`, and that module is
+**not part of any gwinc release** -- the installed distribution's RECORD does
+not list it, so it had been hand-copied into `site-packages/gwinc/noise/` on
+one machine. CI proved it by failing with `No module named
+gwinc.noise.quantum_lib`. It is now vendored properly at
+`sflu_components/quantum_lib.py`, with the one relative import repaired.
 
 ### `intsqz_quantum_lib.py` (469 lines)
 

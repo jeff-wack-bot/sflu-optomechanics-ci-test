@@ -13,7 +13,7 @@ import numpy as np
 from wield.control.SFLU import SFLU, optics, nx2tikz, SFLUcompute
 import components as cmp
 from gwinc.struct import Struct
-from gwinc.noise.quantum_lib import adjoint, Vnorm_sq
+from sflu_components.quantum_lib import adjoint, Vnorm_sq
 import matlib
 import scipy.constants as scc
 from copy import deepcopy

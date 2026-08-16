@@ -2,7 +2,7 @@ import numpy as np
 from wield.control.SFLU import SFLU, optics, nx2tikz
 import components as cmp
 from gwinc.struct import Struct
-from gwinc.noise.quantum_lib import adjoint, Vnorm_sq
+from sflu_components.quantum_lib import adjoint, Vnorm_sq
 import matlib
 import scipy.constants as scc
 from copy import deepcopy
@@ -318,9 +318,115 @@ def plot_simple_mirror_graph(sflu_simple_mirror, tpath_join):
     sflu.graph_reduce_auto_pos(lX=-15, rX=+15, Y=-5, dY=-5)
     G2 = sflu.G.copy()
 
+    node_labels = {
+        'fr.i':   r'$fr_{\mathrm{in}}$',
+        'fr.o':   r'$fr_{\mathrm{out}}$',
+        'fr.F.i': r'$F_i$',
+        'fr.F.o': r'$F_o$',
+        'pos':    r'$x$',
+    }
+    edge_labels = {
+        ('fr.i', 'fr.o'):   r'$-r$',
+        ('fr.i', 'fr.F.i'): r'$F_q^{i}$',
+        ('fr.o', 'fr.F.o'): r'$F_q^{o}$',
+        ('fr.F.i', 'pos'):  r'$\chi$',
+        ('fr.F.o', 'pos'):  r'$\chi$',
+        ('pos', 'fr.o'):    r'$q_x$',
+    }
+
+    def is_aux(n):
+        s = str(n)
+        return s.endswith('.tp') or s.endswith('.exc')
+
+    for G in (G1, G2):
+        for n in [n for n in G.nodes if is_aux(n)]:
+            G.remove_node(n)
+        for n, lbl in node_labels.items():
+            if n in G.nodes:
+                G.nodes[n]['label'] = lbl
+        for (u, v), lbl in edge_labels.items():
+            if G.has_edge(u, v):
+                G.edges[u, v]['label'] = lbl
+
     nx2tikz.dump_pdf(
         [G1, G2],
         fname = tpath_join('testG.pdf'),
+        scale='10pt',
+    )
+
+
+def plot_doubled_simple_mirror_graph(tpath_join):
+    """Pedagogical 2-quadrature view of the perfect-reflectivity optomechanical
+    mirror. Each optical node (fr.in, fr.out) is doubled: a Q1 (amplitude) copy
+    and a Q2 (phase) copy stacked with a small diagonal offset. Mechanical
+    nodes (force, position) are scalar and remain singular.
+
+    Layout: optical IO on the left (input on top, output on bottom);
+    mechanical chain extends to the right.
+
+    The radiation-pressure loop visibly *crosses quadratures*:
+        fr.in_q1 --F_q--> F_in --chi--> x --q_x--> fr.out_q2
+    i.e. an amplitude-quadrature fluctuation drives motion, which radiates
+    out as a phase-quadrature fluctuation. Q2 has no F_q edge because, with
+    the carrier chosen along Q1, phase fluctuations are decoupled from
+    radiation-pressure force at linear order.
+    """
+    import networkx as nx
+
+    G = nx.DiGraph()
+
+    dx, dy = 0.6, 0.6  # diagonal stack offset (Q2 sits up-and-right of Q1)
+    IO_DIST = 6.0      # length of dangling IO edges (matches fig 1)
+
+    # Optical nodes: doubled (Q1 = front, Q2 = back/offset).
+    # Layout is rotated 90° vs the usual: input on top, output on bottom,
+    # both on the LEFT of the figure.
+    G.add_node('fr.in.q1',  pos=(-8, +6), shape='nodeS')
+    G.add_node('fr.in.q2',  pos=(-8 + dx, +6 + dy), shape='nodeS', angle=45)
+    G.add_node('fr.out.q1', pos=(-8, -6), shape='nodeS')
+    G.add_node('fr.out.q2', pos=(-8 + dx, -6 + dy), shape='nodeS')
+
+    # Dangling IO endpoints (hidden coordinates, one per quadrature copy)
+    # extending to the LEFT of the mirror surface nodes.
+    G.add_node('fr.in.q1.exc',  pos=(-8 - IO_DIST,        +6),      shape='coordinate')
+    G.add_node('fr.in.q2.exc',  pos=(-8 + dx - IO_DIST,   +6 + dy), shape='coordinate')
+    G.add_node('fr.out.q1.tp',  pos=(-8 - IO_DIST,        -6),      shape='coordinate')
+    G.add_node('fr.out.q2.tp',  pos=(-8 + dx - IO_DIST,   -6 + dy), shape='coordinate')
+    # Identify each input quadrature on its dangling edge (output side
+    # inherits identity via the within-quadrature -r reflection, so the
+    # q_1 / q_2 labels appear only once each).
+    G.add_edge('fr.in.q1.exc',  'fr.in.q1', label=r'$q_1$', handed='r')
+    G.add_edge('fr.in.q2.exc',  'fr.in.q2', label=r'$q_2$')
+    G.add_edge('fr.out.q1', 'fr.out.q1.tp')
+    G.add_edge('fr.out.q2', 'fr.out.q2.tp')
+
+    # Mechanical chain: a single force node F and the position node x.
+    # All radiation pressure is bookkept on the *incoming* (top) side;
+    # this lets the back-action loop read as one clean arc from the carrier
+    # (top, Q1) down through x and out to the orthogonal quadrature (bottom, Q2).
+    G.add_node('F',   pos=(0, +2), shape='nodeS', label=r'$F$', angle=45)
+    G.add_node('pos', pos=(0, -2), shape='nodeS', label=r'$x$')
+
+    # Reflection: within-quadrature on each copy. The label is shown only
+    # on the Q1 edge to avoid duplication; the Q2 edge is drawn unlabeled.
+    G.add_edge('fr.in.q1', 'fr.out.q1', label=r'$-r$', handed='r')
+    G.add_edge('fr.in.q2', 'fr.out.q2')
+
+    # Radiation-pressure force: applied entirely at the input (top) node.
+    # Only the amplitude quadrature (Q1) drives F — the Q2 edge is omitted
+    # because F_q · (Q2 fluctuation) = 0 in the carrier-aligned basis.
+    G.add_edge('fr.in.q1', 'F', label=r'$F^{q_1}$', bend=-20)
+
+    # Mechanical susceptibility (force -> displacement)
+    G.add_edge('F', 'pos', label=r'$\chi$')
+
+    # Position back-action: motion radiates into the *phase* quadrature (Q2)
+    # of the outgoing field — closes the arc back to the bottom-left stack.
+    G.add_edge('pos', 'fr.out.q2', label=r'$q_2^{x}$', bend=-20)
+
+    nx2tikz.dump_pdf(
+        [G],
+        fname=tpath_join('testG.pdf'),
         scale='10pt',
     )
 
