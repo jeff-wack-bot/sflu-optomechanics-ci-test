@@ -140,3 +140,8 @@ notes/*.pdf
 *Notes.bib
 
 *.fdb_latexmk
+
+# Generated documentation (docs/generate_docs.py rebuilds all of this)
+docs/_site/
+docs/docs/
+docs/mkdocs.yml
