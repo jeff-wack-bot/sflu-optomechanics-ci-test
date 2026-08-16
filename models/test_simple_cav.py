@@ -439,64 +439,6 @@ def plot_reduced_cav_graph(sflu_reduced_cav, tpath_join):
     sflu.graph_reduce_auto_pos(lX=-15, rX=+15, Y=-5, dY=-5)
     G2 = sflu.G.copy()
 
-    # The HR (front) side is now visualized on the LEFT to match the
-    # radiation-pressure mirror figure: fr labels go on the left-side
-    # surface nodes, bk on the right-side ones.
-    node_labels = {
-        'IX.bk.i':     r'$E_{\mathrm{fr}}^{\mathrm{in}}$',
-        'IX.bk.o':     r'$E_{\mathrm{fr}}^{\mathrm{out}}$',
-        'IX.fr.i':     r'$E_{\mathrm{bk}}^{\mathrm{in}}$',
-        'IX.fr.o':     r'$E_{\mathrm{bk}}^{\mathrm{out}}$',
-    }
-    edge_labels = {
-        ('IX.bk.i', 'IX.fr.o'): r'$t$',
-        ('IX.fr.i', 'IX.bk.o'): r'$t$',
-        ('IX.bk.i', 'IX.bk.o'): r'$-r$',
-        ('IX.fr.i', 'IX.fr.o'): r'$r$',
-    }
-    # IO ports: hide the endpoint node and drop the "1" label on the
-    # connector edge so the edge appears to dangle off the mirror surface.
-    io_endpoints = ['IX.bk.i.exc', 'IX.bk.o.tp', 'fr.in.exc', 'fr.out.tp']
-    io_edges = [
-        ('IX.bk.i.exc', 'IX.bk.i'),
-        ('IX.bk.o',     'IX.bk.o.tp'),
-        ('fr.in.exc',   'IX.fr.i'),
-        ('IX.fr.o',     'fr.out.tp'),
-    ]
-    # Distance from mirror surface to dangling IO endpoint (matches
-    # the back-side spacing built into the fixture).
-    IO_DIST = 6.0
-
-    for G in (G1, G2):
-        for n in [n for n in G.nodes if str(n).startswith('EX')]:
-            G.remove_node(n)
-        # Symmetric front-side IO ports, only if internal endpoints remain
-        if 'IX.fr.i' in G.nodes:
-            x, y = G.nodes['IX.fr.i']['pos']
-            G.add_node('fr.in.exc', pos=(x + IO_DIST, y))
-            G.add_edge('fr.in.exc', 'IX.fr.i')
-        if 'IX.fr.o' in G.nodes:
-            x, y = G.nodes['IX.fr.o']['pos']
-            G.add_node('fr.out.tp', pos=(x + IO_DIST, y))
-            G.add_edge('IX.fr.o', 'fr.out.tp')
-        for n, lbl in node_labels.items():
-            if n in G.nodes:
-                G.nodes[n]['label'] = lbl
-        for (u, v), lbl in edge_labels.items():
-            if G.has_edge(u, v):
-                G.edges[u, v]['label'] = lbl
-        # Hide IO endpoint nodes and suppress their pin labels
-        for n in io_endpoints:
-            if n in G.nodes:
-                G.nodes[n]['shape'] = 'coordinate'
-                G.nodes[n]['label'] = None
-                G.nodes[n]['label_default'] = None
-        # Suppress the "1" labels on IO connector edges
-        for (u, v) in io_edges:
-            if G.has_edge(u, v):
-                G.edges[u, v]['label'] = ''
-                G.edges[u, v]['label_default'] = ''
-
     nx2tikz.dump_pdf(
         [G1, G2],
         fname = tpath_join('testG.pdf'),
