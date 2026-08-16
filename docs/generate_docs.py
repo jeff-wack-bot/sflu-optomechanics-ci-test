@@ -31,7 +31,6 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -208,24 +207,32 @@ def safe_name(name):
 # ---------------------------------------------------------------------------
 
 # The examples only write figures when pytest is given --plot, which comes from
-# the wield.pytest plugin. That plugin is normally autoloaded through its
-# pytest11 entry point, but the discovery does not always happen (it did not on
-# a GitHub runner with pytest 9.1 and setuptools 84), and without it every page
-# is built with no figures at all. So probe for the option and load the plugin
-# by hand if it is missing -- passing -p unconditionally is not an option,
-# because double registration is itself an error.
+# the wield.pytest plugin. Normally the plugin is autoloaded through its pytest11
+# entry point, but that discovery is not reliable across environments: on a
+# GitHub runner with pytest 9.1 and setuptools 84 it did not happen, and every
+# page was built with no figures at all.
+#
+# Passing -p unconditionally is not an option either -- where autoload does work
+# it raises "Plugin already registered under a different name". And probing with
+# a separate, smaller pytest invocation is not reliable either: the answer turns
+# out to depend on the rootdir the probe resolves, so the probe can disagree
+# with the run it is supposed to predict.
+#
+# So: run the real command, and if pytest rejects --plot, run it again with the
+# plugin named explicitly. No prediction, no divergence.
 PLOT_PLUGIN = "wield.pytest.plugin"
+PLOT_UNKNOWN = "unrecognized arguments: --plot"
 
 
-def _plot_supported(extra, env):
-    """Does pytest accept --plot with these extra arguments?"""
-    with tempfile.TemporaryDirectory() as empty:
-        probe = subprocess.run(
-            [sys.executable, "-m", "pytest", "--plot", "--collect-only", "-q",
-             "-p", "no:cacheprovider", *extra, empty],
-            capture_output=True, text=True, cwd=str(ROOT), env=env,
-        )
-    return "unrecognized arguments: --plot" not in (probe.stdout + probe.stderr)
+def _pytest_cmd(paths, plugin_args=()):
+    return [
+        sys.executable, "-m", "pytest",
+        "-s", "--plot",
+        "-k", PYTEST_K_FILTER,
+        "-p", "no:cacheprovider",
+        *plugin_args,
+        "--continue-on-collection-errors",
+    ] + [str(ROOT / p) for p in paths]
 
 
 def run_examples(paths):
@@ -235,26 +242,24 @@ def run_examples(paths):
     # runs produce figures that wobble at the 1e-3 level between builds.
     env = dict(os.environ, PYTHONHASHSEED="0")
 
-    plugin_args = []
-    if not _plot_supported([], env):
-        if _plot_supported(["-p", PLOT_PLUGIN], env):
-            print(f"  (--plot needs {PLOT_PLUGIN} loaded explicitly)")
-            plugin_args = ["-p", PLOT_PLUGIN]
-        else:
-            print(f"  WARNING: pytest does not accept --plot even with "
-                  f"{PLOT_PLUGIN} loaded; the examples will produce no figures. "
-                  f"Is wield-pytest installed?")
+    for attempt, plugin_args in enumerate(([], ["-p", PLOT_PLUGIN])):
+        cmd = _pytest_cmd(paths, plugin_args)
+        if attempt:
+            print(f"  retrying with {PLOT_PLUGIN} loaded explicitly")
+        print("Running examples:\n  " + " ".join(cmd))
+        result = subprocess.run(
+            cmd, cwd=str(ROOT), env=env,
+            capture_output=True, text=True,
+        )
+        output = result.stdout + result.stderr
+        print(output, end="" if output.endswith("\n") else "\n")
+        if PLOT_UNKNOWN not in output:
+            break
+    else:
+        print(f"  WARNING: pytest rejects --plot even with {PLOT_PLUGIN} "
+              f"loaded, so the examples produced no figures. "
+              f"Is wield-pytest installed?")
 
-    cmd = [
-        sys.executable, "-m", "pytest",
-        "-s", "--plot",
-        "-k", PYTEST_K_FILTER,
-        "-p", "no:cacheprovider",
-        *plugin_args,
-        "--continue-on-collection-errors",
-    ] + [str(ROOT / p) for p in paths]
-    print("Running examples:\n  " + " ".join(cmd))
-    result = subprocess.run(cmd, cwd=str(ROOT), env=env)
     if result.returncode != 0:
         print(f"  (pytest exited {result.returncode}; "
               f"building docs from whatever outputs exist)")
