@@ -4,11 +4,12 @@
 # Idempotent: safe to re-run. Clones dev dependencies into deps/ and installs
 # them editable, so `git pull` in deps/<name> is enough to update one.
 #
-# Adapted from the setup.sh on the refactor/intsqz branch, with two changes:
+# Adapted from the setup.sh on the refactor/intsqz branch, with three changes:
 # wield-pytest is now installed (it provides the --plot option the docs
-# generator passes, via its pytest11 entry point), and gwinc comes from the
-# package index rather than a fork -- see docs/GWINC_DEPENDENCY.md for why the
-# fork dependency was dropped.
+# generator passes, via its pytest11 entry point); gwinc comes from the package
+# index rather than a fork (see docs/GWINC_DEPENDENCY.md); and the wield
+# packages are cloned over anonymous HTTPS rather than SSH, so CI needs no
+# deploy key and a new contributor needs no account.
 set -euo pipefail
 
 CONDA_ENV="${CONDA_ENV:-wield}"
@@ -17,12 +18,16 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPS_DIR="${REPO_DIR}/deps"
 
 # local_dir  git_url  branch
+#
+# Public, anonymous HTTPS: no key, no account. wield-control comes from the
+# Jeffrey.Wack fork because the branch we need, fix/mimo-ss-keyword, only
+# exists there; the rest come from the upstream wield group.
 DEV_DEPS=(
-  "wield-control     ssh://git@git.mccullerlab.com:2224/Jeffrey.Wack/wield-control.git  fix/mimo-ss-keyword"
-  "wield-bunch       ssh://git@git.mccullerlab.com:2224/wield/wield-bunch.git           main"
-  "wield-utilities   ssh://git@git.mccullerlab.com:2224/wield/wield-utilities.git       main"
-  "wield-declarative ssh://git@git.mccullerlab.com:2224/wield/wield-declarative.git     main"
-  "wield-pytest      ssh://git@git.mccullerlab.com:2224/wield/wield-pytest.git          main"
+  "wield-control     https://git.mccullerlab.com/Jeffrey.Wack/wield-control.git  fix/mimo-ss-keyword"
+  "wield-bunch       https://git.mccullerlab.com/wield/wield-bunch.git           main"
+  "wield-utilities   https://git.mccullerlab.com/wield/wield-utilities.git       main"
+  "wield-declarative https://git.mccullerlab.com/wield/wield-declarative.git     main"
+  "wield-pytest      https://git.mccullerlab.com/wield/wield-pytest.git          main"
 )
 
 # LaTeX is needed because the examples render labels with text.usetex=True;

@@ -404,32 +404,31 @@ site is still generated from the examples.
 
 ### CI
 
-`.gitlab-ci.yml` — three jobs against `condaforge/miniforge3`, with
-`PYTHONHASHSEED=0` set globally:
+`.github/workflows/ci.yml` — GitHub Actions, `PYTHONHASHSEED=0` set globally:
 
-| job | blocking | what it does |
+| step | blocking | what it does |
 |---|---|---|
-| `guard` | yes | `make guard`; a structural change that moves a number fails here |
-| `tests` | no, for now | `make test` |
-| `pages` | yes, on default branch | `docs/generate_docs.py --strict`, then `mkdocs build -d public` |
+| Guard | yes | `make guard`; a change that moves a number fails here |
+| Import survey | yes | `make survey` |
+| Test suite | no, for now | `make test` |
+| Build documentation | yes | `make docs-site` (`--strict` + `mkdocs build`) |
+| Pages deploy | default branch only | publishes `docs/_site` |
 
-`tests` is `allow_failure: true` **only** because of the one known
+The test step is `continue-on-error` **only** because of the one known
 pre-existing failure, `models/test_simple_mirror.py::test_sflu_simple_mirror`.
-Flip it to `false` once that is fixed. The 14 errors from the absent optional
+Drop it once that is fixed. The errors from the absent optional
 `qlance`/Optickle dependency are expected in CI.
 
-`setup.sh` is adapted from the `refactor/intsqz` branch with two corrections:
+`setup.sh` is adapted from the `refactor/intsqz` branch with three corrections:
 it installs **wield-pytest**, which the old script omitted even though it
 supplies the `--plot` option the generator passes (docs builds would have
-produced no figures without it), and it takes `gwinc` from the package index
-rather than a fork, per `docs/GWINC_DEPENDENCY.md`. It also verifies imports at
-the end instead of assuming success.
-
-**Unverified from here:** the pipeline has not been run on a real runner. In
-particular `setup.sh` clones the wield packages over SSH from
-`git.mccullerlab.com`, so CI needs an `SSH_PRIVATE_KEY` variable; the
-`before_script` says so explicitly and warns when it is absent. Local
-equivalents of every job pass.
+produced no figures without it); it takes `gwinc` from the package index rather
+than a fork, per `docs/GWINC_DEPENDENCY.md`; and it clones the wield packages
+over **anonymous HTTPS** rather than SSH, so neither CI nor a new contributor
+needs a key. The workflow inlines the same dependency list so it can cache each
+clone against the revision it pins; `tools/test_ci_config.py` fails if the two
+lists drift, if either reintroduces an SSH URL, or if the guard step stops
+being blocking.
 
 ### The docs build now fails loudly
 

@@ -1,0 +1,175 @@
+name: CI
+
+# guard  - numerical regression check. A structural change that moves a number
+#          fails here. Blocking.
+# tests  - the full example suite. Non-blocking for now; see the step comment.
+# docs   - regenerates the documentation from the examples and publishes it to
+#          GitHub Pages from the default branch.
+#
+# PYTHONHASHSEED is pinned globally: SFLU eliminates graph nodes in Python set
+# iteration order, so an unpinned seed shifts budgets by ~1e-3 between runs and
+# the regression baselines cannot match. See REFACTOR_PLAN.md, Finding 1.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONHASHSEED: '0'
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}     # -l so the conda environment is activated
+    steps:
+      - uses: actions/checkout@v4
+
+      # LaTeX because the examples render labels with text.usetex=True;
+      # poppler-utils for pdftoppm, which turns figure PDFs into PNGs.
+      - name: System packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            texlive-latex-base texlive-fonts-recommended texlive-latex-extra \
+            cm-super dvipng poppler-utils
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          activate-environment: wield
+          python-version: '3.12'
+          auto-activate-base: false
+
+      # slycot is a compiled dependency reached through wield.control; conda-forge
+      # has wheels for it, which is the reason this environment is conda and not
+      # a bare virtualenv.
+      - name: Conda packages
+        run: conda install -y -c conda-forge slycot
+
+      - name: Pip packages
+        run: |
+          pip install \
+            numpy scipy matplotlib pyyaml networkx h5py \
+            control gwinc==0.6.2 \
+            pytest pytest-watcher \
+            mkdocs mkdocs-material
+
+      # Public HTTPS, so no deploy key is needed. Cached by the commit each
+      # branch currently points at, so a dependency update invalidates it.
+      - name: Resolve wield dependency revisions
+        id: wield
+        run: |
+          {
+            echo "wield-control     https://git.mccullerlab.com/Jeffrey.Wack/wield-control.git  fix/mimo-ss-keyword"
+            echo "wield-bunch       https://git.mccullerlab.com/wield/wield-bunch.git           main"
+            echo "wield-utilities   https://git.mccullerlab.com/wield/wield-utilities.git       main"
+            echo "wield-declarative https://git.mccullerlab.com/wield/wield-declarative.git     main"
+            echo "wield-pytest      https://git.mccullerlab.com/wield/wield-pytest.git          main"
+          } > deps.list
+          while read -r dir url branch; do
+            [ -z "$dir" ] && continue
+            printf '%s %s\n' "$dir" "$(git ls-remote "$url" "refs/heads/$branch" | cut -f1)"
+          done < deps.list > deps.lock
+          cat deps.lock
+          echo "hash=$(sha256sum deps.lock | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache wield dependencies
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: wield-${{ runner.os }}-${{ steps.wield.outputs.hash }}
+
+      - name: Install wield dependencies
+        run: |
+          mkdir -p deps
+          while read -r dir url branch; do
+            [ -z "$dir" ] && continue
+            if [ ! -d "deps/$dir" ]; then
+              git clone --depth 1 -b "$branch" "$url" "deps/$dir"
+            fi
+            pip install -e "deps/$dir"
+          done < deps.list
+
+      - name: Verify the environment
+        run: |
+          python - <<'PY'
+          import importlib
+          missing = []
+          for mod in ("numpy", "scipy", "matplotlib", "networkx", "gwinc", "slycot",
+                      "wield.control", "wield.bunch", "wield.utilities", "wield.pytest"):
+              try:
+                  importlib.import_module(mod)
+              except Exception as exc:
+                  missing.append(f"{mod}: {type(exc).__name__}: {exc}")
+          if missing:
+              raise SystemExit("FAILED to import:\n  " + "\n  ".join(missing))
+          print("all required modules import")
+          PY
+          command -v pdftoppm >/dev/null || { echo "pdftoppm missing"; exit 1; }
+
+      # Blocking: the point of the whole regression harness.
+      - name: Guard (numerical baselines)
+        run: make guard PYTHON=python
+
+      - name: Import survey
+        run: make survey PYTHON=python
+
+      # Non-blocking only because of one known pre-existing failure,
+      # models/test_simple_mirror.py::test_sflu_simple_mirror ('Struct' object
+      # has no attribute 'Thr'). Drop continue-on-error once that is fixed. The
+      # errors from the absent optional qlance/Optickle dependency are expected.
+      - name: Test suite
+        continue-on-error: true
+        run: make test PYTHON=python
+
+      # --strict fails if a documented example goes missing, stops producing
+      # figures, or a new example appears with no page.
+      - name: Build documentation
+        run: make docs-site PYTHON=python
+
+      - name: Upload test outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tresults
+          path: '**/tresults/**'
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload documentation site
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: docs/_site
+          retention-days: 7
+
+      - name: Package site for Pages
+        if: github.ref_name == github.event.repository.default_branch
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_site
+
+  deploy-pages:
+    needs: ci
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
