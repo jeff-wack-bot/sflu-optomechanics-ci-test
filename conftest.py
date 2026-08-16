@@ -30,9 +30,27 @@ def pytest_report_header(config):
     return "PYTHONHASHSEED pinned: numerical results are reproducible"
 
 
+def _addoption_if_absent(parser, *args, **kwargs):
+    """Register an option unless something else already has.
+
+    --plot and --no-preclear normally come from the wield.pytest plugin, but
+    relying on that turned out to be fragile: on a GitHub runner the plugin was
+    autoloaded and still did not register --plot, because it guards the call
+    with a module-level flag that had already been set. The symptom was
+    "unrecognized arguments: --plot", which silently produced documentation
+    with no figures in it.
+
+    Registering them here too makes the repository self-sufficient, and the
+    dest names match the plugin's, so either provider satisfies the fixtures.
+    """
+    try:
+        parser.addoption(*args, **kwargs)
+    except ValueError:
+        # already added by the wield.pytest plugin; that provider wins
+        pass
+
+
 def pytest_addoption(parser):
-    # --plot and --no-preclear are registered by the wield.pytest plugin
-    # (loaded via the pytest11 entry point), so don't re-add them here.
     global _options_added
     if _options_added:
         return
@@ -42,6 +60,20 @@ def pytest_addoption(parser):
         "--do-stresstest",
         action = "store_true",
         help   = "Run slow repeated stress tests"
+    )
+    _addoption_if_absent(
+        parser, "--plot",
+        action = "store_true",
+        dest   = "plot",
+        default = False,
+        help   = "Have tests update plots (it is slow)",
+    )
+    _addoption_if_absent(
+        parser, "--no-preclear",
+        action = "store_true",
+        dest   = "no_preclear",
+        default = False,
+        help   = "Do not clear test output folders before running",
     )
 
 

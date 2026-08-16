@@ -206,60 +206,38 @@ def safe_name(name):
 # running the examples
 # ---------------------------------------------------------------------------
 
-# The examples only write figures when pytest is given --plot, which comes from
-# the wield.pytest plugin. Normally the plugin is autoloaded through its pytest11
-# entry point, but that discovery is not reliable across environments: on a
-# GitHub runner with pytest 9.1 and setuptools 84 it did not happen, and every
-# page was built with no figures at all.
-#
-# Passing -p unconditionally is not an option either -- where autoload does work
-# it raises "Plugin already registered under a different name". And probing with
-# a separate, smaller pytest invocation is not reliable either: the answer turns
-# out to depend on the rootdir the probe resolves, so the probe can disagree
-# with the run it is supposed to predict.
-#
-# So: run the real command, and if pytest rejects --plot, run it again with the
-# plugin named explicitly. No prediction, no divergence.
-PLOT_PLUGIN = "wield.pytest.plugin"
+# The examples only write figures when pytest is given --plot. That option is
+# registered by the repository's own conftest.py (and by the wield.pytest plugin
+# when its autoload works), so it does not depend on plugin discovery -- which
+# proved unreliable: on a GitHub runner the plugin loaded but registered no
+# options, and every page was built with no figures in it. Guarded below all the
+# same, because a docs build that quietly drops every figure is worse than one
+# that fails.
 PLOT_UNKNOWN = "unrecognized arguments: --plot"
-
-
-def _pytest_cmd(paths, plugin_args=()):
-    return [
-        sys.executable, "-m", "pytest",
-        "-s", "--plot",
-        "-k", PYTEST_K_FILTER,
-        "-p", "no:cacheprovider",
-        *plugin_args,
-        "--continue-on-collection-errors",
-    ] + [str(ROOT / p) for p in paths]
 
 
 def run_examples(paths):
     """Run the example modules so they deposit figures in tresults/."""
+    cmd = [
+        sys.executable, "-m", "pytest",
+        "-s", "--plot",
+        "-k", PYTEST_K_FILTER,
+        "-p", "no:cacheprovider",
+        "--continue-on-collection-errors",
+    ] + [str(ROOT / p) for p in paths]
+    print("Running examples:\n  " + " ".join(cmd))
     # PYTHONHASHSEED is pinned for the same reason the regression baselines
     # pin it: SFLU's elimination order is set-iteration order, so unpinned
     # runs produce figures that wobble at the 1e-3 level between builds.
     env = dict(os.environ, PYTHONHASHSEED="0")
+    result = subprocess.run(cmd, cwd=str(ROOT), env=env,
+                            capture_output=True, text=True)
+    output = result.stdout + result.stderr
+    print(output, end="" if output.endswith("\n") else "\n")
 
-    for attempt, plugin_args in enumerate(([], ["-p", PLOT_PLUGIN])):
-        cmd = _pytest_cmd(paths, plugin_args)
-        if attempt:
-            print(f"  retrying with {PLOT_PLUGIN} loaded explicitly")
-        print("Running examples:\n  " + " ".join(cmd))
-        result = subprocess.run(
-            cmd, cwd=str(ROOT), env=env,
-            capture_output=True, text=True,
-        )
-        output = result.stdout + result.stderr
-        print(output, end="" if output.endswith("\n") else "\n")
-        if PLOT_UNKNOWN not in output:
-            break
-    else:
-        print(f"  WARNING: pytest rejects --plot even with {PLOT_PLUGIN} "
-              f"loaded, so the examples produced no figures. "
-              f"Is wield-pytest installed?")
-
+    if PLOT_UNKNOWN in output:
+        print("  ERROR: pytest does not accept --plot, so no figures were "
+              "produced. conftest.py should be registering it.")
     if result.returncode != 0:
         print(f"  (pytest exited {result.returncode}; "
               f"building docs from whatever outputs exist)")
