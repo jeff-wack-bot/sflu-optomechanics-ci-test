@@ -8,8 +8,18 @@ try:
     from gwinc.plant import plant_debug, arm_gouyRT
     gwinc_type = 'superQK'
 except ModuleNotFoundError:
-    from gwinc.noise.quantum2 import shotrad_debug, arm_gouyRT
-    gwinc_type = 'master'
+    try:
+        from gwinc.noise.quantum2 import shotrad_debug, arm_gouyRT
+        gwinc_type = 'master'
+    except ModuleNotFoundError:
+        # Neither pygwinc variant is installed. Skip rather than raise: an
+        # uncaught ImportError here aborts collection for the whole run.
+        import pytest
+        pytest.skip(
+            "needs gwinc.plant (superQK fork) or gwinc.noise.quantum2 "
+            "(pygwinc master); neither is present in the installed pygwinc",
+            allow_module_level=True,
+        )
 from copy import deepcopy
 
 

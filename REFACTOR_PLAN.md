@@ -52,7 +52,9 @@ enough that the choice is worth 1e-3 in the final budget — far above rounding.
 Actions:
 
 * **Now:** pin the seed wherever numbers are compared or published. Done for
-  the regression harness and the docs build; add it to `pytest.ini` (Stage 1).
+  the regression harness, the docs build, and every `Makefile` target. It
+  cannot be pinned from `pytest.ini` — CPython fixes the seed at interpreter
+  startup — so `conftest.py` warns when a run is unpinned instead (Stage 1).
 * **Separately, not in this refactor:** the fix upstream is a deterministic
   order (`self.reduce(*sorted(self.nodes))`) or a deliberate pivot rule.
   This will shift published numbers slightly, so it is a physics decision, not
@@ -107,38 +109,64 @@ python -m tools.regression.capture_baseline          # re-baseline deliberately
 pytest tools/regression/test_regression.py           # guard  (run before AND after every stage)
 ```
 
-## Stage 1 — quarantine the dead code
+## Stage 1 — quarantine the dead code (done)
 
-**Risk: none.** Every file moved here is one that raises on import today, so
-nothing can depend on it. This is the change that makes the tree readable.
+**Risk: none.** Every file moved was one that raised on import, so nothing
+could depend on it. This is the change that makes the tree readable.
 
-`git mv` into `attic/` (history preserved; nothing deleted), with an
+`git mv`d into `attic/` (history preserved; nothing deleted), with
 `attic/README.md` recording where each file came from and exactly why it does
 not load:
 
 ```
-attic/optomechanicalmodels/     5 modules, ~1,490 lines  vendored gwinc fork subtree
+attic/optomechanicalmodels/     vendored gwinc fork subtree, ~1,490 lines
 attic/noise/                    quantum_lib.py, quantum2.py
 attic/intsqz_quantum_lib.py     byte-identical to attic/noise/quantum_lib.py
-attic/ifo_packages/             aLIGO Aplus CE1 CE2silica CE2silicon Voyager
-attic/test_DRFPMI.py            needs gwinc.plant; re-enable when that exists
+attic/ifo_packages/             __init__.py of the six IFO packages
 attic/test_CCwIntSqz.py_        trailing-underscore backup
 ```
 
-Also in this stage, all mechanical and individually reversible:
+Also done, each mechanical and individually reversible:
 
-* fix `fromgwinc/intsqz/test_FP.py`'s `../../Aplus/ifo.yaml` → `../Aplus/ifo.yaml`
-  (one `..` too many) and drop its byte-identical twin under
-  `optomechanicalmodels/test/`;
-* add `PYTHONHASHSEED=0` to `pytest.ini` (Finding 1);
-* add `docs/_site/`, `docs/docs/`, `docs/mkdocs.yml` to `.gitignore` — they are
-  generated.
+* fixed `fromgwinc/intsqz/test_FP.py`'s `../../Aplus/ifo.yaml` →
+  `../Aplus/ifo.yaml` (one `..` too many). **It now passes**, having failed
+  since before this branch;
+* `pytest.ini`: added `attic docs deps` to `norecursedirs`;
+* `.gitignore`: generated documentation.
 
-**Verification:** `pytest tools/regression/test_regression.py` unchanged, and a
-bare `pytest` now collects and runs the suite instead of aborting.
+### Two deviations from the plan as written
 
-**Expected after Stage 1:** ~3,400 lines and 15 broken modules out of the way;
-`pytest` works with no arguments.
+**`optics/test_DRFPMI.py` was repaired, not exiled.** The plan listed it for
+`attic/`. On inspection it is 1,107 lines of sound model code blocked by a
+single optional import, unlike the genuinely rotted vendored files. It now
+skips at module level naming the missing dependency, which unblocks collection
+without discarding the code. Install a pygwinc providing `gwinc.plant` or
+`gwinc.noise.quantum2` and it returns.
+
+**`PYTHONHASHSEED=0` cannot go in `pytest.ini`.** The plan said to put it
+there; that is not implementable. CPython reads the variable at interpreter
+startup, so `pytest.ini`, `conftest.py`, and `pytest-env` all run too late —
+assigning `os.environ['PYTHONHASHSEED']` mid-process provably does not change
+hashing. Instead:
+
+* a `Makefile` exports `PYTHONHASHSEED=0` and wraps the common commands, so
+  `make test`, `make guard`, and `make docs` are reproducible by construction;
+* `conftest.py` gained a `pytest_report_header` hook that detects
+  `sys.flags.hash_randomization` and prints a warning at the top of any run
+  where the seed is loose. Detection is the most that layer can do.
+
+**Verification.** `make survey` reports **0 of 33 live modules cannot be
+imported**, down from 15 of 52. The regression guard stayed green throughout.
+A bare `pytest`, which previously collected nothing, now runs:
+
+```
+before (with --ignore):   52 passed, 2 failed, 1 skipped, 14 errors, 1 collection error
+after  (no arguments):    53 passed, 1 failed, 2 skipped, 14 errors
+```
+
+The 14 errors are the absent optional `qlance`/Optickle dependency. The
+remaining failure, `models/test_simple_mirror.py::test_sflu_simple_mirror`,
+comes from uncommitted working-tree changes and was not touched.
 
 ## Stage 2 — one library, not three
 

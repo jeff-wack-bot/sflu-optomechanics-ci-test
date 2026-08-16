@@ -11,5 +11,5 @@ F_Hz = np.logspace(-1, 4, 3000)
 
 def test_load_IFO():
     tpath = path.split(__file__)[0]
-    ifo = Struct.from_file(path.join(tpath, '../../Aplus/ifo.yaml'))
+    ifo = Struct.from_file(path.join(tpath, '../Aplus/ifo.yaml'))
     print(ifo)

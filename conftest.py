@@ -4,12 +4,31 @@ Requires pytest to import
 import os
 from os import path
 import os
+import sys
 from shutil import rmtree
 import contextlib
 
 import pytest
 
 _options_added = False
+
+
+def pytest_report_header(config):
+    """Flag unpinned hash randomisation, which makes results irreproducible.
+
+    SFLU.reduce_auto() eliminates graph nodes in Python set-iteration order, so
+    an unpinned PYTHONHASHSEED changes the elimination order and shifts budgets
+    by up to ~1e-3 between otherwise identical runs. The seed is fixed at
+    interpreter startup, so it can only be detected here, not set. See
+    REFACTOR_PLAN.md, Finding 1.
+    """
+    if sys.flags.hash_randomization:
+        return (
+            "PYTHONHASHSEED is NOT pinned -- numerical results may vary by "
+            "~1e-3 between runs. Use `make test` or `PYTHONHASHSEED=0 pytest`."
+        )
+    return "PYTHONHASHSEED pinned: numerical results are reproducible"
+
 
 def pytest_addoption(parser):
     # --plot and --no-preclear are registered by the wield.pytest plugin

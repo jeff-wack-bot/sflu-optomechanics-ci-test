@@ -2,26 +2,37 @@
 
 A measured map of this repository, not an aspirational one. Every claim below
 was produced by importing each module and by running the suite in the `wield`
-conda environment on 2026-08-15, commit `68aaf0b`.
+conda environment on 2026-08-15, starting from commit `68aaf0b`.
 
 Reproduce the import survey with:
 
 ```bash
-python tools/regression/import_survey.py
+make survey        # or: python tools/regression/import_survey.py
 ```
 
 ## Summary
 
-| | files | lines |
-|---|---|---|
-| live Python (imports, and something uses it) | 37 | ~11,600 |
-| dead Python (cannot be imported in this repo) | 15 | ~3,400 |
+Before Stage 1 of [`REFACTOR_PLAN.md`](../REFACTOR_PLAN.md):
 
-Roughly **a quarter of the Python in this repo cannot be imported at all.** It
-is not "unused but working" — it raises `ModuleNotFoundError` on import. That
-is the single biggest obstacle to seeing the dependency structure: a reader
-cannot tell the vendored corpse apart from the running code by looking at the
+| | modules | lines |
+|---|---|---|
+| live Python | 37 | ~11,600 |
+| dead Python (could not be imported at all) | 15 | ~3,400 |
+
+Roughly **a quarter of the Python could not be imported.** It was not "unused
+but working" — it raised `ModuleNotFoundError` on import, and a reader could
+not tell the vendored corpse apart from the running code by looking at the
 directory tree.
+
+After Stage 1 (dead code quarantined in [`attic/`](../attic/README.md)):
+
+| | modules | lines |
+|---|---|---|
+| live Python, all importable | 33 | ~13,000 |
+| live, skipped for an optional dependency | 1 (`optics/test_DRFPMI.py`) | 1,107 |
+| quarantined in `attic/` | 19 | ~3,370 |
+
+`make survey` now reports **0 of 33 live modules cannot be imported**.
 
 ## The live stack
 
@@ -134,41 +145,58 @@ shared one.
 They look alike and are not alike. `Asharp.yaml` and `Asharp_wideband.yaml`
 additionally exist twice, once here and once at the repository root.
 
-## Dead code inventory
+## Dead code inventory — resolved in Stage 1
 
-None of the following can be imported. Each was confirmed with a real import
-attempt, not by inspection.
+None of the following could be imported. Each was confirmed with a real import
+attempt, not by inspection. All have been `git mv`d to `attic/`; see
+[`attic/README.md`](../attic/README.md) for the per-file account.
 
-| path | lines | why it cannot load |
-|---|---|---|
-| `fromgwinc/optomechanicalmodels/{common,optics,FilterCavity,CoupledCavity,DRFPMI}.py` | ~1,490 | vendored from a `gwinc` fork; uses `..struct`, `..ifo`, `..nb`, `..suspension`, which only resolve inside the `gwinc` package |
-| `fromgwinc/noise/quantum_lib.py`, `fromgwinc/noise/quantum2.py` | 493 | `from ..struct import Struct` → `fromgwinc.struct` does not exist |
-| `fromgwinc/intsqz/quantum_lib.py` | 469 | byte-identical to `fromgwinc/noise/quantum_lib.py`, same broken import |
-| `fromgwinc/{aLIGO,Aplus,CE1,CE2silica,CE2silicon,Voyager}/__init__.py` | 355 | `from gwinc.noise.quantum2 import ...`, absent from installed pygwinc |
-| `optics/test_DRFPMI.py` | 1,107 | needs `gwinc.plant` or `gwinc.noise.quantum2`; blocks collection of the whole `optics/` directory |
-| `fromgwinc/intsqz/test_FP.py`, `fromgwinc/optomechanicalmodels/test/test_FP.py` | 30 | byte-identical to each other; both read `../../Aplus/ifo.yaml`, one `..` too many |
-| `fromgwinc/intsqz/test_CCwIntSqz.py_` | 855 | trailing-underscore backup of an older `test_CCwIntSqz.py` |
+| former path | lines | why it could not load | now |
+|---|---|---|---|
+| `fromgwinc/optomechanicalmodels/*` | ~1,490 | vendored from a `gwinc` fork; uses `..struct`, `..ifo`, `..nb`, `..suspension`, which only resolve inside the `gwinc` package | `attic/optomechanicalmodels/` |
+| `fromgwinc/noise/{quantum_lib,quantum2}.py` | 493 | `from ..struct import Struct` → `fromgwinc.struct` does not exist | `attic/noise/` |
+| `fromgwinc/intsqz/quantum_lib.py` | 469 | byte-identical to the above, same broken import | `attic/intsqz_quantum_lib.py` |
+| `fromgwinc/{aLIGO,Aplus,CE1,CE2silica,CE2silicon,Voyager}/__init__.py` | 355 | `from gwinc.noise.quantum2 import ...`, absent from installed pygwinc | `attic/ifo_packages/` |
+| `fromgwinc/optomechanicalmodels/test/test_FP.py` | 15 | byte-identical twin of `fromgwinc/intsqz/test_FP.py` | `attic/optomechanicalmodels/test/` |
+| `fromgwinc/intsqz/test_CCwIntSqz.py_` | 855 | trailing-underscore backup | `attic/test_CCwIntSqz.py_` |
 
-The six `fromgwinc/<IFO>/` directories also carry `ifo.yaml` files that nothing
-reads: `gwinc.load_budget('Aplus')` resolves to
-`site-packages/gwinc/ifo/Aplus`, not to this repository.
+Two files were repaired rather than quarantined:
 
-## Test suite, as it stands
+* `fromgwinc/intsqz/test_FP.py` read `../../Aplus/ifo.yaml`, one `..` too many.
+  Corrected to `../Aplus/ifo.yaml`; **now passes.**
+* `optics/test_DRFPMI.py` needs `gwinc.plant` or `gwinc.noise.quantum2`, and an
+  uncaught `ImportError` there aborted collection for the entire repository. It
+  now skips at module level naming the missing dependency. 1,107 lines of
+  otherwise-sound model code, so exiling it would have been the wrong call.
 
-Measured on commit `68aaf0b` plus the uncommitted working-tree edits:
+The `ifo.yaml` beside each of the six IFO packages **stayed put** in
+`fromgwinc/<NAME>/`: it is data, it still loads, and `test_FP.py` reads it.
+Note it is not what the published budgets use — `gwinc.load_budget('Aplus')`
+resolves to `site-packages/gwinc/ifo/Aplus`, not to this repository.
+
+## Test suite
+
+On `68aaf0b` plus uncommitted working-tree edits, before Stage 1:
 
 ```
 52 passed, 2 failed, 1 skipped, 14 errors, 1 collection error
 ```
 
+Collection aborted on `optics/test_DRFPMI.py`, so a bare `pytest` ran **nothing
+at all**; the counts above required `--ignore`.
+
+After Stage 1, a bare `pytest` works:
+
+```
+53 passed, 1 failed, 2 skipped, 14 errors
+```
+
 * **14 errors** — `qlance` (Optickle/MATLAB) not installed. Expected; these are
-  external cross-check examples.
-* **1 collection error** — `optics/test_DRFPMI.py`, see above. Because pytest
-  aborts collection on it, `pytest` with no arguments currently runs nothing.
-* **2 failures** — `fromgwinc/intsqz/test_FP.py::test_load_IFO` (bad relative
-  path, longstanding) and `models/test_simple_mirror.py::test_sflu_simple_mirror`
-  (`'Struct' object has no attribute 'Thr'`, arising in uncommitted working-tree
-  changes, not from `68aaf0b`).
+  external cross-check examples, not repository faults.
+* **2 skipped** — one pre-existing, plus `optics/test_DRFPMI.py`.
+* **1 failure** — `models/test_simple_mirror.py::test_sflu_simple_mirror`
+  (`'Struct' object has no attribute 'Thr'`). This arises in uncommitted
+  working-tree changes, not from `68aaf0b`, and is untouched here.
 
 ## Reproducibility
 
