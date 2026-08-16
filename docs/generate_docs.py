@@ -31,6 +31,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -181,6 +182,9 @@ EXCLUDED = {
         "test_sflu_simple_mirror currently fails; document once it passes",
     "fromgwinc/intsqz/test_FP.py":
         "smoke test for the parameter loader, no model and no figures",
+    "fromgwinc/test_strain_single_arm.py":
+        "single-arm strain example, deleted in the working tree but not yet "
+        "committed; drop this entry along with the file",
 }
 
 # Examples needing Optickle/MATLAB or Finesse, which are optional dependencies.
@@ -203,20 +207,53 @@ def safe_name(name):
 # running the examples
 # ---------------------------------------------------------------------------
 
+# The examples only write figures when pytest is given --plot, which comes from
+# the wield.pytest plugin. That plugin is normally autoloaded through its
+# pytest11 entry point, but the discovery does not always happen (it did not on
+# a GitHub runner with pytest 9.1 and setuptools 84), and without it every page
+# is built with no figures at all. So probe for the option and load the plugin
+# by hand if it is missing -- passing -p unconditionally is not an option,
+# because double registration is itself an error.
+PLOT_PLUGIN = "wield.pytest.plugin"
+
+
+def _plot_supported(extra, env):
+    """Does pytest accept --plot with these extra arguments?"""
+    with tempfile.TemporaryDirectory() as empty:
+        probe = subprocess.run(
+            [sys.executable, "-m", "pytest", "--plot", "--collect-only", "-q",
+             "-p", "no:cacheprovider", *extra, empty],
+            capture_output=True, text=True, cwd=str(ROOT), env=env,
+        )
+    return "unrecognized arguments: --plot" not in (probe.stdout + probe.stderr)
+
+
 def run_examples(paths):
     """Run the example modules so they deposit figures in tresults/."""
+    # PYTHONHASHSEED is pinned for the same reason the regression baselines
+    # pin it: SFLU's elimination order is set-iteration order, so unpinned
+    # runs produce figures that wobble at the 1e-3 level between builds.
+    env = dict(os.environ, PYTHONHASHSEED="0")
+
+    plugin_args = []
+    if not _plot_supported([], env):
+        if _plot_supported(["-p", PLOT_PLUGIN], env):
+            print(f"  (--plot needs {PLOT_PLUGIN} loaded explicitly)")
+            plugin_args = ["-p", PLOT_PLUGIN]
+        else:
+            print(f"  WARNING: pytest does not accept --plot even with "
+                  f"{PLOT_PLUGIN} loaded; the examples will produce no figures. "
+                  f"Is wield-pytest installed?")
+
     cmd = [
         sys.executable, "-m", "pytest",
         "-s", "--plot",
         "-k", PYTEST_K_FILTER,
         "-p", "no:cacheprovider",
+        *plugin_args,
         "--continue-on-collection-errors",
     ] + [str(ROOT / p) for p in paths]
     print("Running examples:\n  " + " ".join(cmd))
-    # PYTHONHASHSEED is pinned for the same reason the regression baselines
-    # pin it: SFLU's elimination order is set-iteration order, so unpinned
-    # runs produce figures that wobble at the 1e-3 level between builds.
-    env = dict(os.environ, PYTHONHASHSEED="0")
     result = subprocess.run(cmd, cwd=str(ROOT), env=env)
     if result.returncode != 0:
         print(f"  (pytest exited {result.returncode}; "
