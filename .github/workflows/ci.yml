@@ -49,7 +49,7 @@ jobs:
           miniforge-version: latest
           activate-environment: wield
           python-version: '3.12'
-          auto-activate-base: false
+          conda-remove-defaults: "true"
 
       # slycot is a compiled dependency reached through wield.control; conda-forge
       # has wheels for it, which is the reason this environment is conda and not
@@ -118,9 +118,11 @@ jobs:
           PY
           command -v pdftoppm >/dev/null || { echo "pdftoppm missing"; exit 1; }
 
-      # Blocking: the point of the whole regression harness.
+      # Blocking: the point of the whole regression harness. Uses the
+      # cross-machine tolerances -- the exact check only holds on the machine
+      # that recorded the baseline. See the guard-ci comment in the Makefile.
       - name: Guard (numerical baselines)
-        run: make guard PYTHON=python
+        run: make guard-ci PYTHON=python
 
       - name: Import survey
         run: make survey PYTHON=python
@@ -145,7 +147,7 @@ jobs:
           name: tresults
           path: '**/tresults/**'
           retention-days: 7
-          if-no-files-found: warn
+          if-no-files-found: ignore
 
       - name: Upload documentation site
         uses: actions/upload-artifact@v4

@@ -7,12 +7,13 @@ export PYTHONHASHSEED := 0
 
 PYTHON ?= python
 
-.PHONY: help test guard baseline survey docs docs-quick docs-strict \
+.PHONY: help test guard guard-ci baseline survey docs docs-quick docs-strict \
         docs-site serve clean-docs
 
 help:
 	@echo "test        run the test suite (reproducible)"
-	@echo "guard       check model outputs against the stored baselines"
+	@echo "guard       check model outputs against the stored baselines (exact)"
+	@echo "guard-ci    same, with cross-machine tolerances (what CI runs)"
 	@echo "baseline    re-record the baselines (deliberate; changes numbers)"
 	@echo "survey      list modules that cannot be imported"
 	@echo "docs        run the examples and rebuild the documentation"
@@ -26,6 +27,19 @@ test:
 
 guard:
 	$(PYTHON) -m pytest tools/regression/test_regression.py
+
+# Cross-machine variant, for CI. The exact check above only holds on the
+# machine that recorded the baseline: a different CPU or BLAS build moves most
+# budgets by ~1e-8 and the worst-conditioned config by ~1e-3. These tolerances
+# sit about a decade above the largest difference observed on a GitHub runner,
+# so a real structural regression still fails while hardware noise does not.
+# Topologies are strings and are compared exactly regardless.
+GUARD_CI_RTOL ?= 1e-2
+GUARD_CI_SCALE_ATOL ?= 1e-9
+
+guard-ci:
+	$(PYTHON) -m tools.regression.capture_baseline --check \
+		--rtol $(GUARD_CI_RTOL) --scale-atol $(GUARD_CI_SCALE_ATOL)
 
 baseline:
 	$(PYTHON) -m tools.regression.capture_baseline

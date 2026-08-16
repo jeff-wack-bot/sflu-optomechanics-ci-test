@@ -342,7 +342,25 @@ def write(arrays):
     print(f"Wrote {MANIFEST_PATH.relative_to(ROOT)}")
 
 
-def check(arrays, rtol=1e-12):
+def check(arrays, rtol=1e-12, scale_atol=0.0):
+    """Compare against the stored baseline.
+
+    ``rtol`` on its own is the right check on the machine that recorded the
+    baseline, where the models reproduce bit for bit. Across machines it is not
+    achievable: a different CPU or BLAS build moves most budgets by ~1e-8, the
+    worst-conditioned config by ~1e-3, and an element that is numerically zero
+    flips to a relative difference of 1. Hence two knobs:
+
+    ``rtol``
+        relative tolerance.
+    ``scale_atol``
+        absolute tolerance as a fraction of each array's own magnitude, so a
+        near-zero element is judged against the scale of the array it sits in
+        rather than against itself.
+
+    Topology entries are strings and are always compared exactly, on every
+    machine. A structural mistake shows up there regardless of tolerance.
+    """
     if not NPZ_PATH.exists():
         print(f"No baseline at {NPZ_PATH}; run without --check first.")
         return 1
@@ -350,6 +368,7 @@ def check(arrays, rtol=1e-12):
     missing = sorted(set(ref.files) - set(arrays))
     added = sorted(set(arrays) - set(ref.files))
     bad = []
+    worst = 0.0
     for key in sorted(set(ref.files) & set(arrays)):
         a, b = ref[key], arrays[key]
         if a.dtype == object:
@@ -359,10 +378,14 @@ def check(arrays, rtol=1e-12):
         if a.shape != b.shape:
             bad.append((key, f"shape {a.shape} -> {b.shape}"))
             continue
-        if not np.allclose(a, b, rtol=rtol, atol=0, equal_nan=True):
-            with np.errstate(divide="ignore", invalid="ignore"):
-                rel = np.nanmax(np.abs(b - a) / np.abs(a))
+        scale = float(np.nanmax(np.abs(a))) if a.size else 0.0
+        atol = scale_atol * (scale if np.isfinite(scale) else 0.0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            rel = float(np.nanmax(np.abs(b - a) / np.abs(a))) if a.size else 0.0
+        if not np.allclose(a, b, rtol=rtol, atol=atol, equal_nan=True):
             bad.append((key, f"max rel diff {rel:.3e}"))
+        elif np.isfinite(rel):
+            worst = max(worst, rel)
 
     for key in missing:
         print(f"  MISSING  {key}")
@@ -373,7 +396,8 @@ def check(arrays, rtol=1e-12):
     if missing or bad:
         print("\nBaseline check FAILED")
         return 1
-    print(f"\nBaseline check passed ({len(ref.files)} arrays, rtol={rtol:g})")
+    print(f"\nBaseline check passed ({len(ref.files)} arrays, rtol={rtol:g}, "
+          f"scale_atol={scale_atol:g}; largest difference seen {worst:.2e})")
     return 0
 
 
@@ -384,6 +408,16 @@ def main():
         action="store_true",
         help="compare against the stored baseline instead of overwriting it",
     )
+    ap.add_argument(
+        "--rtol", type=float, default=1e-12,
+        help="relative tolerance for --check (default 1e-12, which only holds "
+             "on the machine that recorded the baseline)",
+    )
+    ap.add_argument(
+        "--scale-atol", type=float, default=0.0,
+        help="absolute tolerance for --check, as a fraction of each array's "
+             "own magnitude; needed off-machine for numerically-zero elements",
+    )
     args = ap.parse_args()
 
     arrays = collect()
@@ -391,7 +425,7 @@ def main():
         print("Captured nothing -- is the environment set up?")
         return 1
     if args.check:
-        return check(arrays)
+        return check(arrays, rtol=args.rtol, scale_atol=args.scale_atol)
     write(arrays)
     return 0
 
