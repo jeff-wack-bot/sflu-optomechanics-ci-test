@@ -430,6 +430,47 @@ clone against the revision it pins; `tools/test_ci_config.py` fails if the two
 lists drift, if either reintroduces an SSH URL, or if the guard step stops
 being blocking.
 
+### What running the CI actually found
+
+The pipeline was exercised on a scratch GitHub repository. Six runs, four real
+defects, none of which local testing could have shown:
+
+1. **The numerical guard was machine-specific.** rtol 1e-12 with no absolute
+   tolerance holds only where the baseline was recorded. On a runner, 106
+   arrays differed: median 1.7e-8 from CPU/BLAS differences, worst budget
+   1.16e-3 (AhatTest, the ill-conditioned one -- same magnitude and same cause
+   as Finding 1), and one numerically-zero matrix element at relative
+   difference 1. Topology strings matched exactly. Hence `make guard-ci`, with
+   tolerances a decade above the observed noise, while `make guard` stays exact
+   locally.
+
+2. **`--plot` was not registered**, so the first docs builds produced 13 pages
+   and zero figures. The `wield.pytest` plugin *was* autoloaded and still added
+   no options, because it guards `--plot` behind a module-level flag that was
+   already set. `conftest.py` now registers `--plot` and `--no-preclear`
+   itself, catching the `ValueError` when the plugin got there first.
+
+3. **Six examples imported a module gwinc has never shipped.**
+   `gwinc.noise.quantum_lib` is absent from the installed distribution's
+   RECORD, yet the file was present in `site-packages/gwinc/noise/`: it had
+   been hand-copied into the installed package. No fresh environment could
+   reproduce those examples. Now vendored at `sflu_components/quantum_lib.py`.
+   This is precisely the failure `docs/GWINC_DEPENDENCY.md` predicts, and it
+   strengthens the case for Stage 6.
+
+4. **The CI log viewer truncates** long steps at a fixed point, which hid the
+   docs failure for two runs. The docs step now writes to a file, echoes the
+   tail on failure, and uploads the whole log.
+
+Points 2 and 3 were caught *because* `--strict` refuses to publish a page with
+no figures. Without that check the site would have deployed, looking complete
+and containing nothing.
+
+**Still untested:** the `deploy-pages` job. GitHub Pages is not available for a
+private repository on this account, so the deployment itself never ran. The
+`ci` job passes end to end and uploads the built site as an artifact -- 14
+pages, 55 images -- so only the final publish step is unverified.
+
 ### The docs build now fails loudly
 
 `--strict` (also `make docs-strict`, and `make docs-site` for the full site)
