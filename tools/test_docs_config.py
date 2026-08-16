@@ -7,6 +7,7 @@ docs build. The generator itself repeats these checks under ``--strict``,
 where it can also see whether an example actually produced figures.
 """
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 
@@ -37,11 +38,30 @@ def test_listed_modules_exist():
     )
 
 
+def _tracked_by_git():
+    try:
+        out = subprocess.run(
+            ["git", "ls-files"], cwd=ROOT,
+            capture_output=True, text=True, check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return set(out.split())
+
+
 def test_excluded_modules_exist():
-    """EXCLUDED should not accumulate entries for files that are long gone."""
-    missing = [p for p in gen.EXCLUDED if not (ROOT / p).exists()]
-    assert not missing, (
-        f"EXCLUDED names files that no longer exist: {missing}. "
+    """EXCLUDED should not accumulate entries for files that are long gone.
+
+    A file that git still tracks but that is deleted in the working tree is an
+    uncommitted deletion in progress, not a stale entry, so it does not count.
+    """
+    tracked = _tracked_by_git()
+    stale = [
+        p for p in gen.EXCLUDED
+        if not (ROOT / p).exists() and (tracked is None or p not in tracked)
+    ]
+    assert not stale, (
+        f"EXCLUDED names files that no longer exist: {stale}. "
         f"Drop them from docs/generate_docs.py."
     )
 
