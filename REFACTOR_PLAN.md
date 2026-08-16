@@ -238,7 +238,71 @@ by `models/`. Left alone deliberately — it is the least load-bearing corner,
 and folding it in belongs with Stage 3 or with declaring `models/` a frozen
 historical example set.
 
-## Stage 3 — models become importable
+## Stage 3 — models become importable (done)
+
+The models now live in an importable `sflu/` package and the `test_*.py` files
+are examples again.
+
+```
+sflu/params.py                 standardize_params, arm_gouyRT
+sflu/models/budget.py          accumulate(), quantum_budget()   <- one budget
+sflu/models/coupled_cavity.py  sflu_CoupledCav(), CoupledCavity(), intSqzQuantum()
+sflu/models/int_fd_sqz.py      sflu_CCwIntFDSqz(), CoupledCavityIntFC(), intFDsqzQuantum()
+sflu/models/filter_cavity.py   sflu_FilterCavity(), FilterCavity()
+sflu/models/topologies/*.yaml  serialized SFLU graphs, next to the code that loads them
+```
+
+`from . import test_CCwIntSqz` as a way to reuse a model is gone. So are the
+`fromgwinc/intsqz/{lib,optics}.py` shims from Stage 2, which had no importers
+left and were deleted.
+
+### The budget existed four times, not three
+
+The plan counted three copies. A fourth turned up in
+`test_intFDsqz_sweeps.py::_compute_d_sense_CC`, which hand-rolled the same
+injection-loss → filter-cavity → plant → readout-loss chain to get one number
+out of it. All four now call `accumulate()` + `quantum_budget()`.
+
+Example files shrank accordingly:
+
+| file | before | after |
+|---|---|---|
+| `test_CCwIntSqz.py` | 891 | 235 |
+| `test_CCwIntFDSqz.py` | 640 | 130 |
+| `test_intFDsqz_sweeps.py` | 339 | 312 |
+
+### Bug found while deduplicating: `LB['ASport']` was overwritten
+
+`intSqzQuantum` did:
+
+```python
+ASport = ASquantumAll * PSDdisplacement * dhdl_sqr
+total = ASport            # same array object
+LB = {'ASport': ASport}
+for ...:
+    total += lossB        # in-place: silently overwrites LB['ASport']
+```
+
+so the returned `LB['ASport']` was not the AS-port contribution at all, it was
+the running total. Confirmed against the captured baseline:
+`LB['ASport']` is bit-identical to `total` for every config. The
+frequency-dependent model does the same computation with `.copy()` and is
+correct — there `ASport/total` is 0.84 at the low-frequency end.
+
+Consequences are small: no current caller reads `LB['ASport']` from
+`intSqzQuantum`, and the only visible symptom is the `MINRATIO` diagnostic
+print, which has been reporting `total/INTSQZ` instead of `ASport/INTSQZ`.
+
+**Not fixed here.** Correcting it changes a returned number, which is a
+reporting decision rather than a refactor. It is preserved exactly, behind an
+explicit `alias_ASport=True` flag with a comment, so the behaviour is now
+visible instead of accidental. Flip the flag to fix it.
+
+**Verification.** Every budget, loss-port and topology array bit-identical;
+guard green; suite unchanged at 53 passed / 1 failed / 2 skipped / 14 errors;
+`make survey` 0 of 36; docs rebuild clean.
+
+## Stage 3 — original plan
 
 Split each `test_*.py` into the three things it currently is:
 

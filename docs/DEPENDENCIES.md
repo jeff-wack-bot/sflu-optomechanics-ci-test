@@ -120,31 +120,45 @@ now explicit, with the intsqz models passing `loss_ports=True` at each mirror.
 `models/components.py`, and `models/components2.py` (which differ from each
 other by 680 lines). It is used only by `models/` and is left for later.
 
-### 2. Models are only reachable by importing test modules
+### 2. Models only reachable by importing test modules — fixed in Stage 3
 
-There is no importable model API. Reuse therefore happens by importing pytest
-files from other pytest files:
+There was no importable model API, so reuse happened by importing pytest files
+from other pytest files:
 
 ```python
-# fromgwinc/intsqz/test_CCwIntFDSqz.py
-from . import test_CCwIntSqz
-sfluB_noFC = test_CCwIntSqz.sflu_CoupledCav()
-
-# fromgwinc/intsqz/test_intFDsqz_sweeps.py
-from .test_CCwIntFDSqz import (...)
+from . import test_CCwIntSqz              # in test_CCwIntFDSqz.py
+from .test_CCwIntFDSqz import (...)       # in test_intFDsqz_sweeps.py
 ```
 
-This is also why the budget calculation exists three times:
+which is also why the budget calculation existed **four** times:
 
 | copy | location | status |
 |---|---|---|
-| 1 | `test_CCwIntSqz.py:346-573` inside `test_CoupledCav` | live |
-| 2 | `test_CCwIntSqz.py:576-716` in `intSqzQuantum` | live, ~130 lines identical to copy 1 |
-| 3 | `test_CCwIntFDSqz.py:525-578` inline in `test_CCwIntFDSqz` | **dead** — result is only used by a commented-out plot line |
+| 1 | inline in `test_CoupledCav` | live |
+| 2 | `intSqzQuantum` | live, 73 lines identical to copy 1 |
+| 3 | inline in `test_CCwIntFDSqz` | dead — result only used by a commented-out plot |
+| 4 | `test_intFDsqz_sweeps.py::_compute_d_sense_CC` | live, found during the merge |
 
-`test_CCwIntFDSqz.py` already shows the way out: it factored its own budget
-into `_compute_intFDsqz_budget()`. That function is the prototype for the
-shared one.
+**Now:** one implementation in `sflu/models/budget.py`, and the models are an
+importable package:
+
+```
+sflu/params.py                 standardize_params, arm_gouyRT
+sflu/models/budget.py          accumulate(), quantum_budget()
+sflu/models/coupled_cavity.py  topology + plant + intSqzQuantum()
+sflu/models/int_fd_sqz.py      topology + plant + intFDsqzQuantum()
+sflu/models/filter_cavity.py   external squeezing filter cavity
+sflu/models/topologies/*.yaml  serialized SFLU graphs
+```
+
+The example files are examples again: `test_CCwIntSqz.py` 891 → 235 lines,
+`test_CCwIntFDSqz.py` 640 → 130.
+
+Deduplicating turned up a bug that had been invisible in the duplication:
+`intSqzQuantum` returned `LB['ASport']` aliased to `total`, so the reported
+AS-port term was silently the running total. It is preserved exactly (behind
+an explicit `alias_ASport` flag) rather than fixed in a structural change —
+see `REFACTOR_PLAN.md`, Stage 3.
 
 ### 3. Two unrelated kinds of YAML share a directory
 

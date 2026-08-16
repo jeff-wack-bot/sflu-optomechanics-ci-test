@@ -1,19 +1,23 @@
 """
-SFLU filter cavity model
+SFLU filter cavity model.
+
+The external squeezing filter cavity: a two-mirror cavity that rotates the
+squeezing angle with frequency before the light reaches the interferometer.
+Its topology is loaded from a serialized SFLU graph rather than built in code.
 """
-import numpy as np
 import os
 
+import numpy as np
+from gwinc import const
+from gwinc.struct import Struct
 from wield.control.SFLU import SFLU
 
-from . import optics
-from gwinc.struct import Struct
-from gwinc import const
+from sflu_components import edges
 
 
 def sflu_FilterCavity():
     fpath, _ = os.path.split(__file__)
-    qfile = os.path.join(fpath, 'FilterCavity.yaml')
+    qfile = os.path.join(fpath, 'topologies', 'FilterCavity.yaml')
     with open(qfile, 'r') as F:
         s = F.read()
     return SFLU.SFLU.convert_yamlstr2self(s)
@@ -55,21 +59,21 @@ def FilterCavity(
     sflu.reduce_auto()
     edge_objs = Struct()
 
-    edge_objs.FC1 = optics.MirrorEdge(
+    edge_objs.FC1 = edges.MirrorEdge(
         name = 'FC1',
         Thr  = Ti,
         Lhr  = 0,  # loss_rt / 2,
         mlib = mlib,
         loss_ports = True,
     )
-    edge_objs.FC2 = optics.MirrorEdge(
+    edge_objs.FC2 = edges.MirrorEdge(
         name = 'FC2',
         Thr  = Te,
         Lhr  = loss_rt,
         mlib = mlib,
         loss_ports = True,
     )
-    edge_objs.L_FC = optics.LinkEdge(
+    edge_objs.L_FC = edges.LinkEdge(
         name       = 'FC.L',
         L_m        = Lfc_m,
         detune_rad = detune_rad,

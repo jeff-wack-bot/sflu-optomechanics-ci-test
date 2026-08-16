@@ -69,12 +69,12 @@ LAYERS = {
     "models.matlib": "lib (models-local copy)",
     "models.components": "lib (models-local copy)",
     "models.components2": "lib (models-local copy)",
-    "fromgwinc.intsqz.lib": "lib (shim -> sflu_components.lib)",
-    "fromgwinc.intsqz.optics": "lib (shim -> sflu_components.edges)",
-    "fromgwinc.intsqz.common": "params (ifo yaml -> params struct)",
-    "fromgwinc.intsqz.FilterCavity": "model",
-    "fromgwinc.intsqz.test_CCwIntSqz": "model",
-    "fromgwinc.intsqz.test_CCwIntFDSqz": "model",
+    "sflu.params": "params (ifo yaml -> params struct)",
+    "sflu.models": "model",
+    "sflu.models.budget": "model (shared noise budget)",
+    "sflu.models.coupled_cavity": "model",
+    "sflu.models.int_fd_sqz": "model",
+    "sflu.models.filter_cavity": "model",
 }
 
 MODULES = [

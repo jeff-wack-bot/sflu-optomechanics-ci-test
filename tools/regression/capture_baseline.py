@@ -100,14 +100,14 @@ def _flatten(prefix, total, LB, extra=None):
 
 
 def capture_intsqz():
-    """Budgets from fromgwinc/intsqz/test_CCwIntSqz.py::intSqzQuantum."""
-    from fromgwinc.intsqz import test_CCwIntSqz
+    """Budgets from sflu.models.coupled_cavity::intSqzQuantum."""
+    from sflu.models import intSqzQuantum
 
     arrays = {}
     for name in INTSQZ_CASES:
         try:
             ifo = _load_ifo(name)
-            total, LB = test_CCwIntSqz.intSqzQuantum(ifo, freq=F_BUDGET)
+            total, LB = intSqzQuantum(ifo, freq=F_BUDGET)
         except Exception:
             print(f"  [skip] intsqz/{name}")
             traceback.print_exc(limit=2)
@@ -118,14 +118,14 @@ def capture_intsqz():
 
 
 def capture_intfdsqz():
-    """Budgets from fromgwinc/intsqz/test_CCwIntFDSqz.py::intFDsqzQuantum."""
-    from fromgwinc.intsqz import test_CCwIntFDSqz
+    """Budgets from sflu.models.int_fd_sqz::intFDsqzQuantum."""
+    from sflu.models import intFDsqzQuantum
 
     arrays = {}
     for name in INTFDSQZ_CASES:
         try:
             ifo = _load_ifo(name)
-            total, LB, d_sense = test_CCwIntFDSqz.intFDsqzQuantum(ifo, freq=F_BUDGET)
+            total, LB, d_sense = intFDsqzQuantum(ifo, freq=F_BUDGET)
         except Exception:
             print(f"  [skip] intfdsqz/{name}")
             traceback.print_exc(limit=2)
@@ -179,17 +179,15 @@ def _mlib_probe(mlib, tag, arrays):
 
 
 def capture_matrixlib():
-    """MatrixLib outputs from both surviving copies of the library.
+    """MatrixLib outputs.
 
-    Stage 2 collapses these two copies into one. Every value here must be
-    unchanged afterwards, for both import paths.
+    There used to be two copies of this library; Stage 2 collapsed them and
+    Stage 3 deleted the compatibility shim, so there is one import path left.
     """
-    from fromgwinc.intsqz import lib as intsqz_lib
     from sflu_components import lib as sc_lib
 
     arrays = {}
-    for tag, mod in (("mlib/sflu_components", sc_lib),
-                     ("mlib/intsqz", intsqz_lib)):
+    for tag, mod in (("mlib/sflu_components", sc_lib),):
         for nhom in (0, 1):
             try:
                 _mlib_probe(mod.MatrixLib(nhom=nhom), f"{tag}/nhom{nhom}", arrays)
@@ -222,9 +220,7 @@ def _edge_probe(mod, tag, arrays, mlib):
         for key, val in sorted(edge_map.items()):
             arrays[f"{tag}/{prefix}/{key}"] = np.asarray(val)
 
-    # --- MirrorEdge, in each of its loss conventions. Both import paths now
-    # resolve to the same class, so both are probed identically; a divergence
-    # here would mean the compatibility shim has rotted.
+    # --- MirrorEdge, in each of its loss conventions.
     mirror_kw = dict(name="M", Thr=0.014, Lhr=30e-6, Rar=1e-4, mlib=mlib)
     variants = [
         ("default", {}),
@@ -271,14 +267,12 @@ def _edge_probe(mod, tag, arrays, mlib):
 
 
 def capture_edges():
-    """Edge maps from both surviving copies of the edge library."""
-    from fromgwinc.intsqz import optics as intsqz_optics
+    """Edge maps from the edge library."""
     from sflu_components import edges as sc_edges
     from sflu_components.lib import MatrixLib
 
     arrays = {}
-    for tag, mod in (("edges/sflu_components", sc_edges),
-                     ("edges/intsqz", intsqz_optics)):
+    for tag, mod in (("edges/sflu_components", sc_edges),):
         for nhom in (0, 1):
             mlib = MatrixLib(nhom=nhom)
             try:
@@ -296,11 +290,11 @@ def capture_topologies():
     Cheap, physics-free, and catches accidental topology drift when the graph
     builders get moved out of the test files.
     """
-    from fromgwinc.intsqz import test_CCwIntFDSqz, test_CCwIntSqz
+    from sflu.models import sflu_CCwIntFDSqz, sflu_CoupledCav
 
     builders = {
-        "CoupledCav": test_CCwIntSqz.sflu_CoupledCav,
-        "CCwIntFDSqz": test_CCwIntFDSqz.sflu_CCwIntFDSqz,
+        "CoupledCav": sflu_CoupledCav,
+        "CCwIntFDSqz": sflu_CCwIntFDSqz,
     }
     arrays = {}
     for name, build in builders.items():

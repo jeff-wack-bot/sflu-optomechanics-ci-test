@@ -1,7 +1,16 @@
+"""
+Derived parameters: an ifo Struct in, a params Struct out.
+
+``standardize_params`` is the single place that reads raw ifo parameters
+(squeezer settings, lengths, mode mismatch, losses, arm power) and turns them
+into the derived quantities every model consumes. Models take the result and
+never re-read the ifo for these.
+"""
 import numpy as np
 from gwinc.struct import Struct
-from .lib import MatrixLib, matrix_stack
 from gwinc.ifo.noises import ifo_power
+
+from sflu_components.lib import MatrixLib, matrix_stack
 
 
 def arm_gouyRT(ROCi_m, L_m, ROCe_m):

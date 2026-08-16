@@ -13,22 +13,19 @@ from wield.bunch import Bunch
 from wield.utilities.mpl import mplfigB
 import gwinc
 
-from sflu_components.lib import (
-    adjoint,
-)
-from .lib import MatsHelper, Vnorm_sq, Vnorm_sqA
-from . import optics
-
-from gwinc.struct import Struct
 from gwinc import const
+from gwinc.struct import Struct
 
-from .common import standardize_params, arm_gouyRT
-
-from .test_CCwIntFDSqz import (
-    sflu_CCwIntFDSqz,
-    _compute_intFDsqz_budget,
+from sflu.models import (
+    CoupledCavity,
+    CoupledCavityIntFC,
+    filter_cavity,
     intFDsqzQuantum,
+    sflu_CCwIntFDSqz,
+    sflu_CoupledCav,
 )
+from sflu.models.budget import accumulate, quantum_budget
+from sflu.params import standardize_params
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -224,51 +221,19 @@ def test_intFDsqz_homodyne_sweep(fpath_join, tpath_join, plotTF, pprint):
 
 
 def _compute_d_sense_CC(F_Hz, ifo, use_SS=True):
-    """Compute signal response d_sense for coupled cavity (no internal FC).
+    """Signal response d_sense for the coupled cavity without an internal FC.
 
-    Uses the same topology as test_CCwIntSqz (CoupledCavity).
+    Same topology as the reference internal-squeezing model, including its
+    external filter cavity when the config defines a squeezer.
     """
-    from . import test_CCwIntSqz
-    from . import FilterCavity
-
-    sfluB = test_CCwIntSqz.sflu_CoupledCav()
-    sflu = sfluB.sflu
-    sflu.reduce_auto()
+    sfluB = sflu_CoupledCav()
+    sfluB.sflu.reduce_auto()
     params = standardize_params(ifo)
-    mlib = params.mlib
-    mats = MatsHelper()
-    mats.H['AS'] = mlib.Id
-
-    L_inj_t = (1 - params.Loss.injection)**0.5
-    mats.update_scalar(L_inj_t)
-    mats.T['Loss_injection'] = mlib.Id * params.Loss.injection**0.5
-
-    # external filter cavity (if present in the config)
-    if 'Squeezer' in ifo:
-        ret_FC = FilterCavity.FilterCavity(F_Hz, ifo, params, use_SS=use_SS)
-        results_FC = ret_FC['resultsAC']
-        mats.update_matrix(results_FC["FC1.bk.i.exc"])
-        mats.T.update({k: v for k, v in results_FC.items() if k != "FC1.bk.i.exc"})
-
-    ret_IFO = test_CCwIntSqz.CoupledCavity(
-        sflu=sflu, F_Hz=F_Hz, ifo=ifo, params=params, use_SS=use_SS,
+    mats = accumulate(
+        sfluB, plant=CoupledCavity, ifo=ifo, params=params, F_Hz=F_Hz,
+        use_SS=use_SS, filter_cavity=filter_cavity.FilterCavity,
     )
-    results_IFO = ret_IFO['resultsAC']
-    mats.update_matrix(results_IFO["SEM.bk.i.exc"])
-    mats.T.update({k: v for k, v in results_IFO.items() if k != "SEM.bk.i.exc"})
-
-    L_read_t = (1 - params.Loss.readout)**0.5
-    mats.update_scalar(L_read_t)
-    mats.T['Loss_readout'] = mlib.diag(params.Loss.readout**0.5)
-
-    params = standardize_params(ifo)
-    mlib = params.mlib
-    HD_angle_rad = params.LO_angle
-    LOa = adjoint(mlib.LO(HD_angle_rad))
-
-    d_sense = np.sum([cc * mats.T[exc] for exc, cc in sfluB.strain_exc.items()], axis=0)
-    d_sense = np.squeeze(LOa @ d_sense)
-    return d_sense
+    return quantum_budget(sfluB, mats, ifo, params, F_Hz=F_Hz).d_sense
 
 
 def test_signal_response_comparison(fpath_join, tpath_join, plotTF, pprint):
@@ -308,7 +273,15 @@ def test_signal_response_comparison(fpath_join, tpath_join, plotTF, pprint):
     # 3. Internal FD squeezing (with internal TWC FC)
     pprint("Computing signal response: internal FD sqz (TWC)...")
     sfluB_intFC = sflu_CCwIntFDSqz()
-    _, _, _, d_sense_intFC = _compute_intFDsqz_budget(sfluB_intFC, F_Hz, ifo_intFC, use_SS)
+    sfluB_intFC.sflu.reduce_auto()
+    params_intFC = standardize_params(ifo_intFC)
+    mats_intFC = accumulate(
+        sfluB_intFC, plant=CoupledCavityIntFC, ifo=ifo_intFC,
+        params=params_intFC, F_Hz=F_Hz, use_SS=use_SS, filter_cavity=None,
+    )
+    d_sense_intFC = quantum_budget(
+        sfluB_intFC, mats_intFC, ifo_intFC, params_intFC, F_Hz=F_Hz,
+    ).d_sense
 
     # plot magnitude of signal response
     axB = mplfigB(size_in=[6.5, 4])
