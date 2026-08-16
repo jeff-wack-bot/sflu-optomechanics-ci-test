@@ -7,16 +7,19 @@ export PYTHONHASHSEED := 0
 
 PYTHON ?= python
 
-.PHONY: help test guard baseline survey docs docs-quick serve clean-docs
+.PHONY: help test guard baseline survey docs docs-quick docs-strict \
+        docs-site serve clean-docs
 
 help:
-	@echo "test       run the test suite (reproducible)"
-	@echo "guard      check model outputs against the stored baselines"
-	@echo "baseline   re-record the baselines (deliberate; changes numbers)"
-	@echo "survey     list modules that cannot be imported"
-	@echo "docs       run the examples and rebuild the documentation"
-	@echo "docs-quick rebuild documentation from existing tresults/ output"
-	@echo "serve      preview the documentation locally"
+	@echo "test        run the test suite (reproducible)"
+	@echo "guard       check model outputs against the stored baselines"
+	@echo "baseline    re-record the baselines (deliberate; changes numbers)"
+	@echo "survey      list modules that cannot be imported"
+	@echo "docs        run the examples and rebuild the documentation"
+	@echo "docs-quick  rebuild documentation from existing tresults/ output"
+	@echo "docs-strict rebuild, failing on missing examples or missing figures"
+	@echo "docs-site   build the static site into docs/_site (as CI does)"
+	@echo "serve       preview the documentation locally"
 
 test:
 	$(PYTHON) -m pytest
@@ -35,6 +38,14 @@ docs:
 
 docs-quick:
 	$(PYTHON) docs/generate_docs.py --skip-tests
+
+# what CI runs: any documented example that vanishes, breaks, or stops
+# producing figures fails the build instead of quietly dropping a page
+docs-strict:
+	$(PYTHON) docs/generate_docs.py --strict
+
+docs-site: docs-strict
+	$(PYTHON) -m mkdocs build -f docs/mkdocs.yml -d "$(CURDIR)/docs/_site"
 
 serve: docs-quick
 	$(PYTHON) -m mkdocs serve -f docs/mkdocs.yml

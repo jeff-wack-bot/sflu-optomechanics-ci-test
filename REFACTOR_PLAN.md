@@ -397,17 +397,72 @@ clean.
 Paths are constructed with `fpath_join(...)` in the examples, so this stage is
 a mechanical move plus path updates.
 
-## Stage 5 — publish the docs
+## Stage 5 — publish the docs (done)
 
-`docs/generate_docs.py` already works end-to-end: 13 pages, 56 figures, clean
-`mkdocs build`. Remaining work is only wiring:
+Infrastructure only; no documentation prose was hand-written. Every page on the
+site is still generated from the examples.
 
-* restore a CI job (the `refactor/intsqz` branch has a working
-  `.gitlab-ci.yml` + `setup.sh` to adapt), running the generator with
-  `PYTHONHASHSEED=0`;
-* extend `MODULES` in the generator as Stage 3 renames files;
-* consider failing the docs build if an example listed in `MODULES` produced no
-  figures, so silent breakage is visible.
+### CI
+
+`.gitlab-ci.yml` — three jobs against `condaforge/miniforge3`, with
+`PYTHONHASHSEED=0` set globally:
+
+| job | blocking | what it does |
+|---|---|---|
+| `guard` | yes | `make guard`; a structural change that moves a number fails here |
+| `tests` | no, for now | `make test` |
+| `pages` | yes, on default branch | `docs/generate_docs.py --strict`, then `mkdocs build -d public` |
+
+`tests` is `allow_failure: true` **only** because of the one known
+pre-existing failure, `models/test_simple_mirror.py::test_sflu_simple_mirror`.
+Flip it to `false` once that is fixed. The 14 errors from the absent optional
+`qlance`/Optickle dependency are expected in CI.
+
+`setup.sh` is adapted from the `refactor/intsqz` branch with two corrections:
+it installs **wield-pytest**, which the old script omitted even though it
+supplies the `--plot` option the generator passes (docs builds would have
+produced no figures without it), and it takes `gwinc` from the package index
+rather than a fork, per `docs/GWINC_DEPENDENCY.md`. It also verifies imports at
+the end instead of assuming success.
+
+**Unverified from here:** the pipeline has not been run on a real runner. In
+particular `setup.sh` clones the wield packages over SSH from
+`git.mccullerlab.com`, so CI needs an `SSH_PRIVATE_KEY` variable; the
+`before_script` says so explicitly and warns when it is absent. Local
+equivalents of every job pass.
+
+### The docs build now fails loudly
+
+`--strict` (also `make docs-strict`, and `make docs-site` for the full site)
+exits nonzero when:
+
+* a module listed in `MODULES` no longer exists — catches renames;
+* a listed module produces no figures, unless it declares
+  `"expect_figures": False`;
+* the example run itself exits nonzero;
+* an example module exists with neither a page nor an entry in the new
+  `EXCLUDED` registry, which records *why* each undocumented example is
+  undocumented.
+
+All four were tamper-tested: each fails under `--strict`, stays quiet
+otherwise, and the healthy tree exits 0.
+
+`tools/test_docs_config.py` repeats the cheap half of those checks in the
+normal suite (18 assertions, 0.3 s), so a rename that orphans a page is caught
+by `make test` rather than at the next docs build.
+
+### Bug found: parametrized examples lost every figure
+
+`collect_figures` looked in `tresults/<test_name>`, but a parametrized example
+writes to `tresults/<test_name>[<param>]`. Six figures across
+`pi/test_pi_gain.py` and `optics/test_simple_cavities.py` were being silently
+dropped — exactly the class of silent breakage this stage was meant to expose,
+and it was the strict check that surfaced it. Fixed, with the parameter id kept
+in the figure key so that two parameter runs writing the same filename no
+longer overwrite each other.
+
+Site is now **13 pages, 59 figures** (was 56), `mkdocs build` clean with zero
+broken links.
 
 ## Stage 6 — vendor the small half of gwinc, drop the runtime dependency
 
