@@ -213,7 +213,6 @@ def safe_name(name):
 # options, and every page was built with no figures in it. Guarded below all the
 # same, because a docs build that quietly drops every figure is worse than one
 # that fails.
-PLOT_UNKNOWN = "unrecognized arguments: --plot"
 
 
 def run_examples(paths):
@@ -230,14 +229,10 @@ def run_examples(paths):
     # pin it: SFLU's elimination order is set-iteration order, so unpinned
     # runs produce figures that wobble at the 1e-3 level between builds.
     env = dict(os.environ, PYTHONHASHSEED="0")
-    result = subprocess.run(cmd, cwd=str(ROOT), env=env,
-                            capture_output=True, text=True)
-    output = result.stdout + result.stderr
-    print(output, end="" if output.endswith("\n") else "\n")
-
-    if PLOT_UNKNOWN in output:
-        print("  ERROR: pytest does not accept --plot, so no figures were "
-              "produced. conftest.py should be registering it.")
+    # Streamed, not captured: capturing turns a long pytest run into one huge
+    # log line, which CI log viewers truncate. If --plot ever goes missing
+    # again, the strict "no figures from ..." check reports it precisely.
+    result = subprocess.run(cmd, cwd=str(ROOT), env=env)
     if result.returncode != 0:
         print(f"  (pytest exited {result.returncode}; "
               f"building docs from whatever outputs exist)")
