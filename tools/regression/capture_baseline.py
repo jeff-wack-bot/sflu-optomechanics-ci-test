@@ -137,6 +137,158 @@ def capture_intfdsqz():
     return arrays
 
 
+def _mlib_probe(mlib, tag, arrays):
+    """Record every MatrixLib output that a model can observe.
+
+    Each probe is recorded independently: some methods raise on some inputs
+    (notably ``RPNK`` with a vector, which contradicts its own docstring but
+    has no callers), and one such failure must not drop the rest.
+    """
+    import numpy as _np
+
+    def probe(name, fn):
+        try:
+            arrays[f"{tag}/{name}"] = _np.asarray(fn())
+        except Exception as exc:  # noqa: BLE001 - a raise is itself the behaviour
+            arrays[f"{tag}/{name}"] = _np.array(
+                [f"{type(exc).__name__}: {exc}"], dtype=object
+            )
+
+    probe("Id", lambda: mlib.Id)
+    probe("Id_v", lambda: mlib.Id_v)
+    probe("Id_a", lambda: mlib.Id_a)
+    probe("Id_s", lambda: mlib.Id_s)
+    probe("zeros", lambda: mlib.zeros)
+    probe("A", lambda: mlib.A)
+    probe("Ai", lambda: mlib.Ai)
+    probe("Mrotation", lambda: mlib.Mrotation(0.37))
+    probe("Mrotation_vec", lambda: mlib.Mrotation(_np.linspace(0.1, 1.2, 5)))
+    probe("LO", lambda: mlib.LO(0.61))
+    probe("RPNK_scalar", lambda: mlib.RPNK(1.7))
+    probe("RPNK_vector", lambda: mlib.RPNK(_np.linspace(0.5, 3.0, 4)))
+    probe("SQZ", lambda: mlib.SQZ(10 ** (-0.6), 10 ** 1.5))
+    probe("diag", lambda: mlib.diag(_np.linspace(1.0, 2.0, 4)))
+    probe("promote_scalar", lambda: mlib.promote(0.73))
+    probe("block_diag", lambda: mlib.block_diag(_np.eye(2) * 1.3))
+    if mlib.nhom > 0:
+        probe("MrotationMM", lambda: mlib.MrotationMM(0.02, 0.4))
+        probe("MrotationMM_inv", lambda: mlib.MrotationMM(0.02, 0.4, inv=True))
+    # SQZc exists only on the intsqz copy today; Stage 2a moves it across.
+    if hasattr(mlib, "SQZc"):
+        probe("SQZc", lambda: mlib.SQZc(10 ** (-0.6), 10 ** 1.5))
+
+
+def capture_matrixlib():
+    """MatrixLib outputs from both surviving copies of the library.
+
+    Stage 2 collapses these two copies into one. Every value here must be
+    unchanged afterwards, for both import paths.
+    """
+    from fromgwinc.intsqz import lib as intsqz_lib
+    from sflu_components import lib as sc_lib
+
+    arrays = {}
+    for tag, mod in (("mlib/sflu_components", sc_lib),
+                     ("mlib/intsqz", intsqz_lib)):
+        for nhom in (0, 1):
+            try:
+                _mlib_probe(mod.MatrixLib(nhom=nhom), f"{tag}/nhom{nhom}", arrays)
+            except Exception:
+                print(f"  [skip] {tag}/nhom{nhom}")
+                traceback.print_exc(limit=2)
+        # module-level helpers
+        m = np.array([[2.0, 0.5], [1.0, 3.0]])
+        arrays[f"{tag}/adjoint"] = mod.adjoint(m + 1j * m[::-1])
+        arrays[f"{tag}/transpose"] = mod.transpose(m)
+        arrays[f"{tag}/Minv"] = mod.Minv(m)
+        v = np.array([[1.0 + 2j], [0.5 - 1j]])
+        arrays[f"{tag}/Vnorm_sq"] = mod.Vnorm_sq(v)
+        if hasattr(mod, "Vnorm_sqA"):
+            arrays[f"{tag}/Vnorm_sqA"] = mod.Vnorm_sqA(mod.adjoint(v))
+    print(f"  [ok]   MatrixLib probes ({len(arrays)} arrays)")
+    return arrays
+
+
+def _edge_probe(mod, tag, arrays, mlib, has_ss_api):
+    """Record the edge maps every edge class produces.
+
+    Consumers of these classes (`optics/`, `pi/`) mostly plot without
+    asserting, so this is the only thing standing between a bad merge and a
+    silently wrong figure.
+    """
+    F_Hz = np.geomspace(10.0, 1e4, 7)
+
+    def store(prefix, edge_map):
+        for key, val in sorted(edge_map.items()):
+            arrays[f"{tag}/{prefix}/{key}"] = np.asarray(val)
+
+    # --- MirrorEdge; the two copies gate their loss edges differently, so
+    # probe each copy the way its own callers actually construct it.
+    mirror_kw = dict(name="M", Thr=0.014, Lhr=30e-6, Rar=1e-4, mlib=mlib)
+    variants = [("default", {})]
+    if has_ss_api:
+        variants.append(("loss_in_transmission", {"loss_in_transmission": True}))
+    else:
+        variants.append(("loss_ports", {"loss_ports": True}))
+    for label, extra in variants:
+        m = mod.MirrorEdge(**mirror_kw, **extra)
+        store(f"MirrorEdge/{label}/DC", m.edgesDC())
+        store(f"MirrorEdge/{label}/AC", m.edgesAC(F_Hz=F_Hz, resultsDC={}))
+
+    # --- BSEdge
+    bs = mod.BSEdge(name="BS", Thr=0.5, Lhr=1e-5, mlib=mlib)
+    store("BSEdge/DC", bs.edgesDC())
+    store("BSEdge/AC", bs.edgesAC(F_Hz=F_Hz, resultsDC={}))
+
+    # --- LinkEdge
+    gouy = None if mlib.nhom == 0 else 0.4
+    link = mod.LinkEdge(name="L", L_m=4000.0, detune_rad=0.31,
+                        gouy_rad=gouy, mlib=mlib)
+    store("LinkEdge/DC", link.edgesDC())
+    store("LinkEdge/AC", link.edgesAC(F_Hz=F_Hz))
+
+    # --- RPMirrorEdge, with realistic DC fields at the faces
+    field = np.sqrt(4e5) * mlib.LO(np.pi / 2)
+    resultsDC = {
+        "E.fr.i.tp": field,
+        "E.fr.o.tp": -0.9 * field,
+        "E.bk.i.tp": 0.1 * field,
+        "E.bk.o.tp": 0.3 * field,
+    }
+    rp_kw = dict(name="E", Thr=5e-6, Lhr=30e-6, mlib=mlib,
+                 suscept=lambda f: -1 / (40 * (2 * np.pi * f) ** 2))
+    if not has_ss_api:
+        rp_kw["loss_ports"] = True
+    rp = mod.RPMirrorEdge(**rp_kw)
+    store("RPMirrorEdge/DC", rp.edgesDC())
+    store("RPMirrorEdge/AC", rp.edgesAC(F_Hz=F_Hz, resultsDC=resultsDC))
+
+    # --- SQZEdge exists only on the intsqz copy today
+    if hasattr(mod, "SQZEdge"):
+        sq = mod.SQZEdge(name="SQ", sqzDB=10.0, sqzANGdeg=-90.0, mlib=mlib)
+        store("SQZEdge/DC", sq.edgesDC())
+        store("SQZEdge/AC", sq.edgesAC(F_Hz=F_Hz))
+
+
+def capture_edges():
+    """Edge maps from both surviving copies of the edge library."""
+    from fromgwinc.intsqz import optics as intsqz_optics
+    from sflu_components import edges as sc_edges
+
+    arrays = {}
+    for tag, mod, has_ss in (("edges/sflu_components", sc_edges, False),
+                             ("edges/intsqz", intsqz_optics, True)):
+        for nhom in (0, 1):
+            mlib = mod.MatrixLib(nhom=nhom)
+            try:
+                _edge_probe(mod, f"{tag}/nhom{nhom}", arrays, mlib, has_ss)
+            except Exception:
+                print(f"  [skip] {tag}/nhom{nhom}")
+                traceback.print_exc(limit=2)
+    print(f"  [ok]   edge probes ({len(arrays)} arrays)")
+    return arrays
+
+
 def capture_topologies():
     """Serialized SFLU graphs.
 
@@ -174,6 +326,10 @@ def collect():
     arrays.update(capture_intfdsqz())
     print("Capturing SFLU topologies...")
     arrays.update(capture_topologies())
+    print("Capturing MatrixLib outputs...")
+    arrays.update(capture_matrixlib())
+    print("Capturing edge maps...")
+    arrays.update(capture_edges())
     return arrays
 
 

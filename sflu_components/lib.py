@@ -24,6 +24,13 @@ def Vnorm_sq(M):
     return sq[..., 0, 0].real
 
 
+def Vnorm_sqA(M):
+    #perhaps there is a faster way to compute this?
+    sq = M @ adjoint(M)
+    assert(sq.shape[-2:] == (1, 1))
+    return sq[..., 0, 0].real
+
+
 def matrix_stack(arr, dtype = None, **kwargs):
     """
     This routing allows one to construct 2D matrices out of heterogeneously
@@ -326,6 +333,31 @@ class MatrixLib:
         M[:2, :2] = SQZ2(sqzV, asqzV)
         return M
 
+    def SQZc(self, sqzV, asqzV):
+        """
+        Squeeze matrix
+
+        Parameters
+        ----------
+        sqzV : float
+          Squeezing variance
+        asqzV : float
+          Antisqueezing variance
+
+        Returns
+        -------
+        S : (dim, dim) array
+          Squeeze matrix for the fundamental mode
+
+        Examples
+        --------
+        6 dB squeezing and 15 dB anti-squeezing
+        >>> mlib.SQZ(10**(-6/10), 10**(15/10))
+        """
+        M = -self.Id
+        M[:2, :2] = SQZ2(sqzV, asqzV)
+        return M
+
     def LO(self, phi):
         """
         LO for the fundamental
@@ -482,3 +514,27 @@ class MatrixLib:
         Ai : (dim, dim) array
         """
         return self.block_diag(A2i, dtype=complex)
+
+
+class MatsHelper(object):
+    def __init__(self):
+        self.H = {}
+        self.T = {}
+        self.L = {}
+        # FIXME: these shifts should be removed for the improved derivatives
+        # kept to prevent bugs
+        self.Hshifts = {}
+        self.FCshifts = set()
+
+    def update_matrix(self, H):
+        self.H.update({k: H @ M for k, M in self.H.items()})
+        self.T.update({k: H @ M for k, M in self.T.items()})
+
+    def update_LO(self, H):
+        self.L.update({k: H @ M for k, M in self.L.items()})
+
+    def update_scalar(self, s):
+        self.H.update({k: s * M for k, M in self.H.items()})
+        self.T.update({k: s * M for k, M in self.T.items()})
+
+
