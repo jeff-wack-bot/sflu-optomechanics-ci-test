@@ -140,6 +140,21 @@ than the dependency removal itself, and it is the same class of problem as the
 `PYTHONHASHSEED` finding: a published number that quietly depends on ambient
 state.
 
+Stage 4 turned up direct evidence of this happening. The repository was
+carrying six vendored gwinc parameter files at `fromgwinc/<IFO>/ifo.yaml`.
+Nothing read them, and they did not match what was being computed with:
+`Aplus/ifo.yaml` differed from the installed pygwinc by 29 lines, including
+
+```
+Curvature.ITM   1970   (vendored, kuns fork)   vs   1940   (installed, master)
+Curvature.ETM   2192                           vs   2245
+```
+
+exactly the divergence tabulated above. They are now in
+`attic/ifo_packages/`, and they are the natural reference for step 1 below:
+when we vendor a base parameter set deliberately, this is the choice that has
+been made accidentally until now, and it should be made on purpose.
+
 Two smaller benefits come along:
 
 * it unblocks the question left open in `REFACTOR_PLAN.md` — the repo no longer

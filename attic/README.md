@@ -50,19 +50,35 @@ Was `fromgwinc/intsqz/quantum_lib.py`. Byte-identical to `noise/quantum_lib.py`
 `fromgwinc/intsqz/lib.py`, which provides the same matrix helpers via
 `MatrixLib` instead of the fixed 2/4/6-dimensional `mats_*` structs.
 
-### `ifo_packages/` — six budget classes (355 lines)
+### `ifo_packages/` — six vendored gwinc IFO definitions
 
-The `__init__.py` of `fromgwinc/{aLIGO,Aplus,CE1,CE2silica,CE2silicon,Voyager}/`.
-Each does `from gwinc.noise.quantum2 import ...`, which is absent from the
-installed pygwinc.
+The `__init__.py` of `fromgwinc/{aLIGO,Aplus,CE1,CE2silica,CE2silicon,Voyager}/`
+(355 lines), each of which does `from gwinc.noise.quantum2 import ...`, absent
+from the installed pygwinc.
 
-**Only the `__init__.py` files moved.** The `ifo.yaml` beside each one is data,
-still readable, and stayed in `fromgwinc/<NAME>/ifo.yaml` — it is what
-`fromgwinc/intsqz/test_FP.py` loads.
+The `ifo.yaml` beside each one joined them in Stage 4, once measurement showed
+they are **stale and unused**:
 
-Note that `gwinc.load_budget('Aplus')` in the live models resolves to
-`site-packages/gwinc/ifo/Aplus`, **not** to this repository. These vendored
-yaml files are not what the published budgets are computed from.
+* nothing reads them. `gwinc.load_budget('Aplus')` in the live models resolves
+  to `site-packages/gwinc/ifo/Aplus`, not to this repository. The single
+  reader was `test_FP.py`, via a relative path with one `..` too many, so it
+  had been failing rather than reading them;
+* they disagree with the installed pygwinc — `Aplus/ifo.yaml` by 29 lines,
+  including `Curvature.ITM: 1970 / ETM: 2192` against master's `1940 / 2245`.
+  Those are the **kuns-fork** values documented in `REFACTOR_PLAN.md`. So the
+  repository was carrying one set of parameters while computing with another;
+* `fromgwinc/Aplus/ifo.yaml` is even mislabelled, opening
+  `# GWINC aLIGO interferometer parameters`.
+
+Kept because they record what the kuns fork used, which Stage 6 will want when
+it picks a base parameter set to vendor deliberately.
+
+### `ifo_superseded/` — four retired configs
+
+`Ahat20`, `Ahat25`, `AhatSh20`, `AhatSh25`, formerly `fromgwinc/intsqz/old/`.
+Zero references from live code; the only mention of `Ahat25` is a commented-out
+line. Superseded by the `Ahat17` / `Ahat22` / `Ahat30` sets in
+`sflu/params/ifo/`.
 
 ### `test_CCwIntSqz.py_` (855 lines)
 

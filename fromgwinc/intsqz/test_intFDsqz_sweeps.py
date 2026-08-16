@@ -25,7 +25,7 @@ from sflu.models import (
     sflu_CoupledCav,
 )
 from sflu.models.budget import accumulate, quantum_budget
-from sflu.params import standardize_params
+from sflu.params import ifo_path, load_ifo, standardize_params
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -58,7 +58,7 @@ def test_intFDsqz_param_sweep(fpath_join, tpath_join, plotTF, pprint):
     aplQB = aplB.Quantum
 
     # base configuration
-    budget = gwinc.load_budget(fpath_join('AhatTestIntFC.yaml'))
+    budget = gwinc.load_budget(ifo_path('AhatTestIntFC'))
     ifo_base = budget.ifo
     ifo_base.Optics.INTSQ_loss = 1000e-6
 
@@ -159,7 +159,7 @@ def test_intFDsqz_homodyne_sweep(fpath_join, tpath_join, plotTF, pprint):
     aplQB = aplB.Quantum
 
     # base configuration
-    budget = gwinc.load_budget(fpath_join('AhatTestIntFC.yaml'))
+    budget = gwinc.load_budget(ifo_path('AhatTestIntFC'))
     ifo_base = budget.ifo
     ifo_base.Optics.INTSQ_loss = 1000e-6
 
@@ -251,11 +251,11 @@ def test_signal_response_comparison(fpath_join, tpath_join, plotTF, pprint):
     F_Hz = np.geomspace(10, 30e3, 1000)
 
     # load configs
-    budget_intFC = gwinc.load_budget(fpath_join('AhatTestIntFC.yaml'))
+    budget_intFC = gwinc.load_budget(ifo_path('AhatTestIntFC'))
     ifo_intFC = budget_intFC.ifo
     ifo_intFC.Optics.INTSQ_loss = 1000e-6
 
-    budget_intSqz = gwinc.load_budget(fpath_join('AhatTest.yaml'))
+    budget_intSqz = gwinc.load_budget(ifo_path('AhatTest'))
     ifo_intSqz = budget_intSqz.ifo
     ifo_intSqz.Optics.INTSQ_loss = 1000e-6
 

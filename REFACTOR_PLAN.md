@@ -335,7 +335,57 @@ model.
 **Verification:** the guard. Step 1 in particular must be bit-identical — it is
 pure deduplication.
 
-## Stage 4 — params get their own place
+## Stage 4 — params get their own place (done)
+
+```
+sflu/params/ifo/*.yaml       13 IFO parameter sets
+sflu/params/standardize.py   standardize_params, arm_gouyRT
+sflu/params/__init__.py      ifo_path(), load_ifo(), available()
+```
+
+Parameter sets are now reached **by name**, not by path, so no caller needs to
+know where the directory is:
+
+```python
+from sflu.params import load_ifo, ifo_path
+ifo = load_ifo('AhatTest')                                  # parameters
+gwinc.load_budget(ifo_path('AplWide'), freq=F_Hz).run()     # reference budget
+```
+
+That replaced 20 `fpath_join('X' + '.yaml')` call sites, which had resolved
+relative to whichever test file happened to contain them.
+
+Serialized SFLU graphs went to `sflu/models/topologies/` in Stage 3 rather
+than under `params/` as originally planned: a topology is part of the model,
+not a parameter set. The two kinds of yaml are separated either way, which was
+the point.
+
+### Duplicates and stale data removed
+
+* **Root-level `Asharp.yaml` / `Asharp_wideband.yaml`** — byte-identical to
+  the `fromgwinc/intsqz/` copies *and* unreferenced (every read went through
+  `fpath_join` into `fromgwinc/intsqz/`). Deleted.
+* **`fromgwinc/intsqz/old/`** — `Ahat20`, `Ahat25`, `AhatSh20`, `AhatSh25`,
+  zero live references. Moved to `attic/ifo_superseded/`.
+* **`fromgwinc/<IFO>/ifo.yaml`** — six vendored gwinc parameter files, moved to
+  `attic/ifo_packages/` to rejoin their already-quarantined `__init__.py`. They
+  were unread, and worse, **wrong**: `Aplus/ifo.yaml` differs from the
+  installed pygwinc by 29 lines, carrying `Curvature.ITM: 1970 / ETM: 2192`
+  where master has `1940 / 2245`. Those are the kuns-fork values. The repo was
+  storing one set of parameters and computing with another. (One of them is
+  even mislabelled `# GWINC aLIGO interferometer parameters`.) Stage 6 will
+  want them as a reference when it picks a base set to vendor deliberately.
+
+`test_FP.py`, which had been failing since before this branch on a relative
+path with one `..` too many, pointed at one of those stale files. It now
+exercises `load_ifo()` and asserts the `+inherit` chain resolved, instead of
+printing a file nothing used. **It passes.**
+
+**Verification.** Guard exact (231 arrays, zero changes); survey 0 of 37;
+suite unchanged at 53 passed / 1 failed / 2 skipped / 14 errors; docs rebuild
+clean.
+
+## Stage 4 — original plan
 
 * `sflu/params/ifo/*.yaml` — IFO parameter sets (`Ahat*`, `Aplus*`, `Asharp*`);
 * `sflu/params/topologies/*.yaml` — serialized SFLU graphs (`CoupledCavity.yaml`,

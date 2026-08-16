@@ -12,7 +12,7 @@ from wield.utilities.mpl import mplfigB
 from sflu.models import sflu_CoupledCav, CoupledCavity, intSqzQuantum
 from sflu.models import filter_cavity
 from sflu.models.budget import accumulate, quantum_budget
-from sflu.params import standardize_params
+from sflu.params import ifo_path, load_ifo, standardize_params
 
 import matplotlib.pyplot as plt
 plt.rcParams.update({"text.usetex": True, "font.family": "serif"})
@@ -23,10 +23,10 @@ def test_CoupledCav(fpath_join, tpath_join, plotTF, pprint):
     F_Hz = np.geomspace(10, 30e3, 1000)
 
     budgetApl = gwinc.load_budget('Aplus', freq=F_Hz)
-    budgetAplWide = gwinc.load_budget(fpath_join('AplWide' + '.yaml'), freq=F_Hz)
+    budgetAplWide = gwinc.load_budget(ifo_path('AplWide'), freq=F_Hz)
     budgetCE2 = gwinc.load_budget('CE2silica', freq=np.geomspace(30, 10e3, 1000))
 
-    ifo = gwinc.load_budget(fpath_join('AhatTest' + '.yaml')).ifo
+    ifo = load_ifo('AhatTest')
     ifo.Optics.INTSQ_loss = 1000e-6
     print(ifo.Optics)
 
@@ -76,8 +76,8 @@ def test_CoupledCav_variants(fpath_join, tpath_join, plotTF, pprint):
     CLPSD = aplB.psd - aplB.Quantum.psd
 
 
-    #budget = gwinc.load_budget(fpath_join('Ahat25' + '.yaml'))
-    #budget = gwinc.load_budget(fpath_join('AhatPL25' + '.yaml'))
+    #budget = gwinc.load_budget(ifo_path('Ahat25'))
+    #budget = gwinc.load_budget(ifo_path('AhatPL25'))
 
     #ifo.Optics.INTSQ_loss = 2000e-6
     # print(ifo.Optics)
@@ -126,18 +126,15 @@ def test_CoupledCav_variants(fpath_join, tpath_join, plotTF, pprint):
 
     if True:
         axBpl = mplfigB(size_in=[6.5, 3])
-        budget = gwinc.load_budget(fpath_join('Ahat17' + '.yaml'))
-        ifo = budget.ifo
+        ifo = load_ifo('Ahat17')
         plot_loss_series(axBpl, ifo, name='Ahat17', label='$\\widehat{\\mathrm{A}}$ (405kW, $G_\\mathrm{int}$=17dB)', lw=2.5, color='#FF6C0C', alpha=0.3, zorder=100)
 
-        budget = gwinc.load_budget(fpath_join('Ahat22' + '.yaml'))
-        ifo = budget.ifo
+        ifo = load_ifo('Ahat22')
         plot_loss_series(axBpl, ifo, name='Ahat22', label='$\\widehat{\\mathrm{A}}$ (405kW, $G_\\mathrm{int}$=22dB)', lw=2.5, color='#005851', alpha=0.3, zorder=90)
 
         # testing
         if False:
-            budget = gwinc.load_budget(fpath_join('AplusTest' + '.yaml'))
-            ifo = budget.ifo
+            ifo = load_ifo('AplusTest')
             ifo.Optics.MM_INTSQZ = 0
             #ifo.intSqueezer = Struct()
             #ifo.intSqueezer.AmplitudedB = 0
@@ -145,8 +142,8 @@ def test_CoupledCav_variants(fpath_join, tpath_join, plotTF, pprint):
 
         plot_other_budget(axBpl, 'Aplus', name='Apl', label='A+ (750kW)', lw=2, color='black', dashed=True)
 
-        plot_other_budget(axBpl, fpath_join('AplWide' + '.yaml'), name='AplWB10', label='A+ wideband', lw=2, color='black', alpha=0.5)
-        plot_other_budget(axBpl, fpath_join('AplWide05' + '.yaml'), name='AplWB05', lw=2, color='black', alpha=0.5)
+        plot_other_budget(axBpl, ifo_path('AplWide'), name='AplWB10', label='A+ wideband', lw=2, color='black', alpha=0.5)
+        plot_other_budget(axBpl, ifo_path('AplWide05'), name='AplWB05', lw=2, color='black', alpha=0.5)
 
         #budgetCE2 = gwinc.load_budget('CE2silica', freq=F_Hz)
         #ce2B = budgetCE2.run()
@@ -162,24 +159,22 @@ def test_CoupledCav_variants(fpath_join, tpath_join, plotTF, pprint):
 
 
     if True:
-        budgetAsh = gwinc.load_budget(fpath_join('Asharp' + '.yaml'), freq=F_Hz)
+        budgetAsh = gwinc.load_budget(ifo_path('Asharp'), freq=F_Hz)
         ashB = budgetApl.run()
         CLPSD = ashB.psd - ashB.Quantum.psd
         budgetD['AShCl'] = CLPSD
 
         axBsh = mplfigB(size_in=[6.5, 3])
-        budget = gwinc.load_budget(fpath_join('AhatSh17' + '.yaml'))
-        ifo = budget.ifo
+        ifo = load_ifo('AhatSh17')
         plot_loss_series(axBsh, ifo, name='AhatSh17', label='$\\widehat{\\mathrm{A}}^\\sharp$ (860kW, $G_\\mathrm{int}$=17dB)', lw=2.5, color='#FF6C0C', alpha=0.3, zorder=100)
 
-        budget = gwinc.load_budget(fpath_join('AhatSh22' + '.yaml'))
-        ifo = budget.ifo
+        ifo = load_ifo('AhatSh22')
         plot_loss_series(axBsh, ifo, name='AhatSh22', label='$\\widehat{\\mathrm{A}}^\\sharp$ (860kW, $G_\\mathrm{int}$=22dB)', lw=2.5, color='#005851', alpha=0.3, zorder=90)
 
-        plot_other_budget(axBsh, fpath_join('Asharp' + '.yaml'), name='ASh', label='A$^\\sharp$ (1.5MW)', lw=2, color='black', dashed=True)
+        plot_other_budget(axBsh, ifo_path('Asharp'), name='ASh', label='A$^\\sharp$ (1.5MW)', lw=2, color='black', dashed=True)
 
-        plot_other_budget(axBsh, fpath_join('Asharp_wideband' + '.yaml'), name='AShWB05', label='A$^\\sharp$ wideband', lw=2, color='black', alpha=0.5)
-        #plot_other_budget(axBsh, fpath_join('AplWide05' + '.yaml'), lw=2, color='black', alpha=0.5)
+        plot_other_budget(axBsh, ifo_path('Asharp_wideband'), name='AShWB05', label='A$^\\sharp$ wideband', lw=2, color='black', alpha=0.5)
+        #plot_other_budget(axBsh, ifo_path('AplWide05'), lw=2, color='black', alpha=0.5)
 
 
         axBsh.ax0.set_ylim(2e-25, 4e-23)

@@ -160,9 +160,9 @@ AS-port term was silently the running total. It is preserved exactly (behind
 an explicit `alias_ASport` flag) rather than fixed in a structural change —
 see `REFACTOR_PLAN.md`, Stage 3.
 
-### 3. Two unrelated kinds of YAML share a directory
+### 3. Two unrelated kinds of YAML sharing a directory — fixed in Stage 4
 
-`fromgwinc/intsqz/` contains both:
+`fromgwinc/intsqz/` contained both:
 
 * **IFO parameter sets** — `Ahat17.yaml`, `AhatTest.yaml`, `Asharp.yaml`, … ,
   consumed by `gwinc.load_budget`; and
@@ -170,7 +170,18 @@ see `REFACTOR_PLAN.md`, Stage 3.
   consumed by `SFLU.convert_yamlstr2self`.
 
 They look alike and are not alike. `Asharp.yaml` and `Asharp_wideband.yaml`
-additionally exist twice, once here and once at the repository root.
+additionally existed twice, once there and once at the repository root.
+
+**Now:** parameter sets in `sflu/params/ifo/`, reached by name via
+`sflu.params.load_ifo()` / `ifo_path()`; topologies in
+`sflu/models/topologies/`, beside the model that loads them. The root-level
+duplicates were byte-identical and unreferenced, and are gone.
+
+Three sets of stale data went to `attic/` in the same pass, the notable one
+being the six vendored `fromgwinc/<IFO>/ifo.yaml`: unread by anything, and
+carrying **kuns-fork parameter values** (`Curvature.ITM: 1970 / ETM: 2192`)
+while every actual run used installed pygwinc master (`1940 / 2245`). The
+repository was storing one set of parameters and computing with another.
 
 ## Dead code inventory — resolved in Stage 1
 

@@ -76,15 +76,10 @@ INTFDSQZ_CASES = [
 INTSQ_LOSS = 1000e-6
 
 
-def _yaml(name):
-    return str(ROOT / "fromgwinc" / "intsqz" / f"{name}.yaml")
-
-
 def _load_ifo(name):
-    import gwinc
+    from sflu.params import load_ifo
 
-    budget = gwinc.load_budget(_yaml(name))
-    ifo = budget.ifo
+    ifo = load_ifo(name)
     ifo.Optics.INTSQ_loss = INTSQ_LOSS
     return ifo
 

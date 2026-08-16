@@ -11,7 +11,7 @@ from wield.utilities.mpl import mplfigB
 
 from sflu.models import sflu_CCwIntFDSqz, CoupledCavityIntFC
 from sflu.models.budget import accumulate, quantum_budget
-from sflu.params import standardize_params
+from sflu.params import ifo_path, load_ifo, standardize_params
 
 import matplotlib.pyplot as plt
 plt.rcParams.update({"text.usetex": True, "font.family": "serif"})
@@ -38,7 +38,7 @@ def test_CCwIntFDSqz(fpath_join, tpath_join, plotTF, pprint):
     aplClassicalASD = np.sqrt(aplClassicalPSD)
 
     # load internal FD squeezing config
-    ifo = gwinc.load_budget(fpath_join('AhatTestIntFC.yaml')).ifo
+    ifo = load_ifo('AhatTestIntFC')
     ifo.Optics.INTSQ_loss = 1000e-6
     print(ifo.Optics)
 
