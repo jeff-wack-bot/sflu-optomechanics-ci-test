@@ -230,18 +230,21 @@ def CoupledCavityIntFC(
         suscept_ss = suscept_ss,
         lambda_m = lambda_m,
         mlib     = mlib,
+        loss_ports = True,
     )
     edge_objs.ITM = optics.RPMirrorEdge(
         name     = 'ITM',
         Thr      = Ti,
         Lhr      = params.Loss.arm_rt / 2,
         mlib     = mlib,
+        loss_ports = True,
     )
     edge_objs.SEM = optics.MirrorEdge(
         name = 'SEM',
         Thr  = Ts,
         Lhr  = params.Loss.SEC_rt,
         mlib = mlib,
+        loss_ports = True,
     )
 
     # travelling-wave filter cavity coupling mirror (beamsplitter)

@@ -60,12 +60,14 @@ def FilterCavity(
         Thr  = Ti,
         Lhr  = 0,  # loss_rt / 2,
         mlib = mlib,
+        loss_ports = True,
     )
     edge_objs.FC2 = optics.MirrorEdge(
         name = 'FC2',
         Thr  = Te,
         Lhr  = loss_rt,
         mlib = mlib,
+        loss_ports = True,
     )
     edge_objs.L_FC = optics.LinkEdge(
         name       = 'FC.L',

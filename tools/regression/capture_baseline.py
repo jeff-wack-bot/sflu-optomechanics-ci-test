@@ -209,7 +209,7 @@ def capture_matrixlib():
     return arrays
 
 
-def _edge_probe(mod, tag, arrays, mlib, has_ss_api):
+def _edge_probe(mod, tag, arrays, mlib):
     """Record the edge maps every edge class produces.
 
     Consumers of these classes (`optics/`, `pi/`) mostly plot without
@@ -222,14 +222,16 @@ def _edge_probe(mod, tag, arrays, mlib, has_ss_api):
         for key, val in sorted(edge_map.items()):
             arrays[f"{tag}/{prefix}/{key}"] = np.asarray(val)
 
-    # --- MirrorEdge; the two copies gate their loss edges differently, so
-    # probe each copy the way its own callers actually construct it.
+    # --- MirrorEdge, in each of its loss conventions. Both import paths now
+    # resolve to the same class, so both are probed identically; a divergence
+    # here would mean the compatibility shim has rotted.
     mirror_kw = dict(name="M", Thr=0.014, Lhr=30e-6, Rar=1e-4, mlib=mlib)
-    variants = [("default", {})]
-    if has_ss_api:
-        variants.append(("loss_in_transmission", {"loss_in_transmission": True}))
-    else:
-        variants.append(("loss_ports", {"loss_ports": True}))
+    variants = [
+        ("default", {}),
+        ("loss_ports", {"loss_ports": True}),
+        ("loss_in_transmission",
+         {"loss_in_transmission": True, "loss_ports": True}),
+    ]
     for label, extra in variants:
         m = mod.MirrorEdge(**mirror_kw, **extra)
         store(f"MirrorEdge/{label}/DC", m.edgesDC())
@@ -255,11 +257,9 @@ def _edge_probe(mod, tag, arrays, mlib, has_ss_api):
         "E.bk.i.tp": 0.1 * field,
         "E.bk.o.tp": 0.3 * field,
     }
-    rp_kw = dict(name="E", Thr=5e-6, Lhr=30e-6, mlib=mlib,
-                 suscept=lambda f: -1 / (40 * (2 * np.pi * f) ** 2))
-    if not has_ss_api:
-        rp_kw["loss_ports"] = True
-    rp = mod.RPMirrorEdge(**rp_kw)
+    rp = mod.RPMirrorEdge(name="E", Thr=5e-6, Lhr=30e-6, mlib=mlib,
+                          loss_ports=True,
+                          suscept=lambda f: -1 / (40 * (2 * np.pi * f) ** 2))
     store("RPMirrorEdge/DC", rp.edgesDC())
     store("RPMirrorEdge/AC", rp.edgesAC(F_Hz=F_Hz, resultsDC=resultsDC))
 
@@ -274,14 +274,15 @@ def capture_edges():
     """Edge maps from both surviving copies of the edge library."""
     from fromgwinc.intsqz import optics as intsqz_optics
     from sflu_components import edges as sc_edges
+    from sflu_components.lib import MatrixLib
 
     arrays = {}
-    for tag, mod, has_ss in (("edges/sflu_components", sc_edges, False),
-                             ("edges/intsqz", intsqz_optics, True)):
+    for tag, mod in (("edges/sflu_components", sc_edges),
+                     ("edges/intsqz", intsqz_optics)):
         for nhom in (0, 1):
-            mlib = mod.MatrixLib(nhom=nhom)
+            mlib = MatrixLib(nhom=nhom)
             try:
-                _edge_probe(mod, f"{tag}/nhom{nhom}", arrays, mlib, has_ss)
+                _edge_probe(mod, f"{tag}/nhom{nhom}", arrays, mlib)
             except Exception:
                 print(f"  [skip] {tag}/nhom{nhom}")
                 traceback.print_exc(limit=2)

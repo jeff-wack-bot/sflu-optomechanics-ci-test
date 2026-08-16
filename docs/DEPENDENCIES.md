@@ -71,14 +71,14 @@ That is the structure the code *means*. It is not the structure the code
 
 ## The three problems
 
-### 1. There are two copies of the library, and one model uses both at once
+### 1. Two copies of the library, one model using both at once — fixed in Stage 2
 
-`sflu_components/lib.py` and `fromgwinc/intsqz/lib.py` are the same file with
+`sflu_components/lib.py` and `fromgwinc/intsqz/lib.py` were the same file with
 59 lines of difference; `sflu_components/edges.py` and
-`fromgwinc/intsqz/optics.py` differ by 404 lines. Both define a class called
+`fromgwinc/intsqz/optics.py` differed by 404 lines. Both defined a class called
 `MatrixLib` and classes called `MirrorEdge`, `LinkEdge`, `RPMirrorEdge`.
 
-`fromgwinc/intsqz/test_CCwIntSqz.py` imports from **both**:
+`fromgwinc/intsqz/test_CCwIntSqz.py` imported from **both**:
 
 ```python
 from sflu_components.lib import MatrixLib, adjoint, Minv     # copy A
@@ -86,12 +86,11 @@ from .lib import MatsHelper, Vnorm_sq, Vnorm_sqA             # copy B
 from . import optics                                         # copy B's edges
 ```
 
-So two distinct `MatrixLib` classes are alive in one process, and the edge
-objects default to `mlib=MatrixLib(nhom=0)` bound from copy B at import time.
-It happens to work because the two classes are structurally compatible. Nobody
-should have to know that.
+Two distinct `MatrixLib` classes were alive in one process, and the edge objects
+defaulted to `mlib=MatrixLib(nhom=0)` bound from copy B at import time. It
+worked only because the two classes were structurally compatible.
 
-What copy B actually adds, and all it adds:
+What copy B carried, and all it carried:
 
 | addition | where | what it is |
 |---|---|---|
@@ -100,12 +99,26 @@ What copy B actually adds, and all it adds:
 | `MatsHelper` | `lib.py` | accumulator for H/T/L transfer-matrix dicts |
 | `MirrorEdge(loss_in_transmission=)` | `optics.py` | alternate loss convention |
 | `SQZEdge` | `optics.py` | squeezing edge (the internal squeezer itself) |
-| `BSEdge` | `optics.py` | beamsplitter edge (used by the FD model) |
 | `edgesACSS()` on every edge | `optics.py` | state-space rather than frequency-response edges |
 
-`models/` then carries a *third* partial copy: `models/matlib.py`,
+**Now:** one implementation in `sflu_components/{lib,edges}.py`, with
+`fromgwinc/intsqz/{lib,optics}.py` reduced to documented re-export shims
+(540 → 53 and 532 → 35 lines).
+
+```python
+sflu_components.lib.MatrixLib is fromgwinc.intsqz.lib.MatrixLib      # True
+sflu_components.edges.MirrorEdge is fromgwinc.intsqz.optics.MirrorEdge  # True
+```
+
+The merge was verified before it was made: of the 80 edge-map entries both
+copies produced, **all 80 were bit-identical**, so the copies differed only in
+feature set, never in value. The one behavioural difference — the intsqz copy
+always emitted `.fr.l` / `.bk.l`, this one emitted them only on request — is
+now explicit, with the intsqz models passing `loss_ports=True` at each mirror.
+
+`models/` still carries a *third* partial copy: `models/matlib.py`,
 `models/components.py`, and `models/components2.py` (which differ from each
-other by 680 lines).
+other by 680 lines). It is used only by `models/` and is left for later.
 
 ### 2. Models are only reachable by importing test modules
 

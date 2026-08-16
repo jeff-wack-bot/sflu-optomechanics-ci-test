@@ -1,9 +1,37 @@
+"""
+Edges for SFLU graphs.
+
+This is the single edge library. It is the union of what used to be two
+copies -- this file and ``fromgwinc/intsqz/optics.py`` -- merged in Stage 2b of
+``REFACTOR_PLAN.md``. Every edge-map entry the two copies both produced was
+verified bit-identical beforehand (80 of 80), so the merge changes no number;
+the copies differed only in which features they carried and in whether loss
+ports were emitted.
+
+Two conventions survive the merge and are deliberately kept distinct:
+
+``loss_ports``
+    Whether to emit the ``.fr.l`` / ``.bk.l`` loss edges. Must agree with the
+    ``loss_ports`` given to the corresponding graph element. The intsqz copy
+    always emitted these; this copy emitted them only on request and its
+    callers depend on that, so request-only remains the default and the
+    intsqz models now ask for them explicitly.
+
+``loss_in_transmission``
+    A different physical convention on ``MirrorEdge``, in which ``Lhr`` comes
+    out of transmission (``t = sqrt(Thr - Lhr)``, ``r = sqrt(1 - Thr)``)
+    rather than out of reflection. Used for the internal-squeezing
+    beamsplitter loss model. Not a spelling of ``loss_ports``.
+"""
 import numpy as np
-import scipy.constants as scc
+from gwinc import const
 from gwinc.struct import Struct
 from .lib import MatrixLib, adjoint, block_diag
 
 pi2i = 2j*np.pi
+
+from wield.control import SISO, MIMO, ss_bare
+import wield.control.ss_bare.design
 
 
 class MirrorEdge:
@@ -18,36 +46,27 @@ class MirrorEdge:
             Rar=0,
             lambda_m=1064e-9,
             mlib=MatrixLib(nhom=0),
+            loss_in_transmission=False,
             loss_ports=False,
     ):
-        self._mlib = mlib
         self.name = name
-        self._t = mlib.promote(np.sqrt(Thr))
-        self._l = mlib.promote(np.sqrt(Lhr))
-        self._r = mlib.promote(np.sqrt(
-            mlib.Id
-            - mlib.promote(Thr)
-            - mlib.promote(Lhr)
-            - mlib.promote(Rar)
-        ))
-        self.lambda_m = lambda_m
         self._loss_ports = loss_ports
+        if not loss_in_transmission:
+            self.t = mlib.promote(np.sqrt(Thr))
+            self.l = mlib.promote(np.sqrt(Lhr))
+            self.r = mlib.promote(np.sqrt(
+                mlib.Id
+                - mlib.promote(Thr)
+                - mlib.promote(Lhr)
+                - mlib.promote(Rar)
+            ))
+        else:
+            self.t = mlib.promote(np.sqrt(Thr - Lhr))
+            self.l = mlib.promote(np.sqrt(Lhr))
+            self.r = mlib.promote(np.sqrt(1 - Thr))
 
-    @property
-    def mlib(self):
-        return self._mlib
-
-    @property
-    def t(self):
-        return self._t
-
-    @property
-    def l(self):
-        return self._l
-
-    @property
-    def r(self):
-        return self._r
+        self.lambda_m = lambda_m
+        self.mlib = mlib
 
     def _optic_edges(self):
         edge_map = {
@@ -82,6 +101,7 @@ class MirrorEdge:
         resultsDC: the dictionary of DC results
         """
         edge_map = self._optic_edges()
+
         # # DC fields at the mirror faces
         # def get_fieldsDC(tp):
         #     try:
@@ -101,6 +121,20 @@ class MirrorEdge:
         #     self.name + ".fr.px": px_fr,
         #     self.name + ".bk.px": px_bk,
         # })
+
+        return edge_map
+
+    def edgesACSS(self, *args, **kwargs):
+        """
+        Return the state space representation (or just D Matrix) of the edges for the AC calculation, rather than a frequency response array.
+        """
+        edge_map = self.edgesAC(*args, **kwargs)
+        assert(__debug__)
+        if __debug__:
+            for k, e in edge_map.items():
+                e = np.asarray(e)
+                assert(len(e.shape) <= 2)
+                assert(len(e) <= 40)
         return edge_map
 
 
@@ -113,17 +147,20 @@ class BSEdge:
             mlib=MatrixLib(nhom=0),
     ):
         self.name = name
-        self.r = np.sqrt(1 - Thr - Lhr)
-        self.t = np.sqrt(Thr)
+        self.t = mlib.promote(np.sqrt(Thr))
+        self.l = mlib.promote(np.sqrt(Lhr))
+        self.r = mlib.promote(np.sqrt(
+            mlib.Id
+            - mlib.promote(Thr)
+            - mlib.promote(Lhr)
+        ))
         self.mlib = mlib
 
     def _optic_edges(self):
-        t = self.mlib.diag(self.t)
-        r = self.mlib.diag(self.r)
         edge_map = {
-            self.name + ".fr.r": -r,
-            self.name + ".bk.r": +r,
-            self.name + ".t": t,
+            self.name + ".fr.r": -self.r,
+            self.name + ".bk.r": +self.r,
+            self.name + ".t": self.t,
         }
         return edge_map
 
@@ -134,6 +171,20 @@ class BSEdge:
     def edgesAC(self, *args, **kwargs):
         edge_map = self._optic_edges()
         return edge_map
+
+    def edgesACSS(self, *args, **kwargs):
+        """
+        Return the state space representation (or just D Matrix) of the edges for the AC calculation, rather than a frequency response array.
+        """
+        edge_map = self.edgesAC(*args, **kwargs)
+        assert(__debug__)
+        if __debug__:
+            for k, e in edge_map.items():
+                e = np.asarray(e)
+                assert(len(e.shape) <= 2)
+                assert(len(e) <= 40)
+        return edge_map
+
 
 
 class LinkEdge:
@@ -169,55 +220,31 @@ class LinkEdge:
             MM_to=1,
             mlib=MatrixLib(nhom=0),
     ):
-        self._mlib = mlib
         self.name = name
         self.L_m = L_m
         self.detune_rad = detune_rad
-        self.gouy_rad = gouy_rad
-        self.MM_fr = MM_fr
-        self.MM_to = MM_to
+        self.MM_fr = mlib.promote(MM_fr)
+        self.MM_to = mlib.promote(MM_to)
+        self.mlib = mlib
 
-    @property
-    def mlib(self):
-        return self._mlib
-
-    @property
-    def MM_fr(self):
-        return self._MM_fr
-
-    @MM_fr.setter
-    def MM_fr(self, MM_fr):
-        self._MM_fr = self.mlib.promote(MM_fr)
-
-    @property
-    def MM_to(self):
-        return self._MM_to
-
-    @MM_to.setter
-    def MM_to(self, MM_to):
-        self._MM_to = self.mlib.promote(MM_to)
-
-    @property
-    def gouy_rad(self):
-        return self._gouy_rad
-
-    @gouy_rad.setter
-    def gouy_rad(self, gouy_rad):
         if gouy_rad is None:
-            self._gouy_rad = np.zeros(self.mlib.nhom)
+            self.gouy_rad = np.zeros(mlib.nhom)
         else:
             if np.isscalar(gouy_rad):
-                if self.mlib.nhom == 0:
-                    self._gouy_rad = np.zeros(0)
-                elif self.mlib.nhom == 1:
-                    self._gouy_rad = np.array([gouy_rad])
+                if mlib.nhom == 0:
+                    self.gouy_rad = np.zeros(0)
+                elif mlib.nhom == 1:
+                    self.gouy_rad = np.array([gouy_rad])
                 else:
                     raise ValueError('need gouy_phases for all HOMs')
             else:
-                assert len(gouy_rad) == self.mlib.nhom
-                self._gouy_rad = gouy_rad
+                assert len(gouy_rad) == mlib.nhom
+                self.gouy_rad = gouy_rad
 
     def _edges(self, Lmat):
+        """
+        This works equivalently in statespace
+        """
         edge_map = {
             self.name: self.MM_to @ Lmat @ self.MM_fr,
         }
@@ -236,9 +263,116 @@ class LinkEdge:
 
         F_Hz: Frequency vector at which to evaluate the edge map
         """
-        delay = self.mlib.diag(np.exp(-pi2i * F_Hz * self.L_m / scc.c))
+        delay = self.mlib.diag(np.exp(-pi2i * F_Hz * self.L_m / const.c))
         Lmat = delay @ self.mlib.Mrotation(self.detune_rad, *self.gouy_rad)
         return self._edges(Lmat)
+
+    def edgesACSS(self, F_Hz, *args, **kwargs):
+        """
+        Returns the AC edge map dictionary
+
+        F_Hz: Frequency vector at which to evaluate the edge map
+        """
+        # TODO, need to compute the order more appropriately
+        if self.L_m > 0:
+            order = int(self.L_m / const.c * np.max(F_Hz) + 1)
+            # print("Useorder: ", order)
+            singledelay = SISO.design.delay_thiran_raw(
+                delay_s=self.L_m / const.c,
+                order=order + 2,
+            ).asSS
+            delayABCD = ss_bare.design.replicateSS(ss=singledelay.ss, dim=self.mlib.dim)
+
+            Lmat = delayABCD @ self.mlib.Mrotation(self.detune_rad, *self.gouy_rad)
+        else:
+            Lmat = self.mlib.Mrotation(self.detune_rad, *self.gouy_rad)
+        return self._edges(Lmat)
+
+
+class SQZEdge:
+    """
+    Defines DC and AC edges for propagation links
+
+    Parameters
+    ----------
+    name : str
+      Name of the link
+    L_m: float
+      Macroscopic length of the link [m]
+    detune_rad : float, optional
+      Common microscopic detuning of all fields [rad], 0 by default
+    gouy_rad : nhom element list of scalars or (N,) arrays, optional
+      Gouy phases for each HOM [rad], all 0 by default
+    MM_fr : scalar or (dim, dim) array, optional
+      Mode matching basis transformation at the beginning of the link,
+      (dim, dim) identity by default
+    MM_to : scalar or (dim, dim) array, optional
+      Mode matching basis transformation at the end of the link,
+      (dim, dim) identity by default
+    mlib : MatrixLib instance, optional
+      MatrixLib to use for calculations, MatrixLib(nhom=0) by default
+    """
+    def __init__(
+            self,
+            name,
+            sqzDB=0,
+            sqzANGdeg=0,
+            MM_fr=1,
+            MM_to=1,
+            mlib=MatrixLib(nhom=0),
+            dual_unphysical=False,
+    ):
+        self.name = name
+        self.sqzDB = sqzDB
+        self.sqzANGrad = sqzANGdeg / 180 * np.pi
+        self.MM_fr = mlib.promote(MM_fr)
+        self.MM_to = mlib.promote(MM_to)
+        self.dual_unphysical = dual_unphysical
+        self.mlib = mlib
+
+    def _edges(self):
+        """
+        This works equivalently in statespace
+        """
+        if not self.dual_unphysical:
+            edge_map = {
+                self.name:
+                self.MM_to @
+                self.mlib.Mrotation(self.sqzANGrad) @
+                self.mlib.SQZc(10**(self.sqzDB/10), 10**(-self.sqzDB/10)) @
+                self.mlib.Mrotation(-self.sqzANGrad) @ self.MM_fr,
+            }
+        else:
+            edge_map = {
+                self.name:
+                self.MM_to @
+                self.mlib.Mrotation(self.sqzANGrad) @
+                self.mlib.SQZc(10**(self.sqzDB/10), 10**(self.sqzDB/10)) @
+                self.mlib.Mrotation(-self.sqzANGrad) @ self.MM_fr,
+            }
+        return edge_map
+
+    def edgesDC(self):
+        """
+        Returns the DC edge map dictionary
+        """
+        return self._edges()
+
+    def edgesAC(self, F_Hz, *args, **kwargs):
+        """
+        Returns the AC edge map dictionary
+
+        F_Hz: Frequency vector at which to evaluate the edge map
+        """
+        return self._edges()
+
+    def edgesACSS(self, F_Hz, *args, **kwargs):
+        """
+        Returns the AC edge map dictionary
+
+        F_Hz: Frequency vector at which to evaluate the edge map
+        """
+        return self._edges()
 
 
 class RPMirrorEdge:
@@ -264,9 +398,6 @@ class RPMirrorEdge:
       1 by default
     mlib : MatrixLib instance, optional
       MatrixLib to use for calculations, MatrixLib(nhom=0) by default
-    loss_ports : bool, int, optional
-      Includes loss is always included by inclues the loss ports if True,
-      False by default
 
     Examples
     --------
@@ -293,49 +424,28 @@ class RPMirrorEdge:
             Lhr=0,
             Rar=0,
             suscept=lambda x: np.zeros_like(x),
+            # should be a wield.control.SISO.SISOStateSpace object
+            suscept_ss=SISO.zpk([], [], 0).asSS,
             lambda_m=1064e-9,
             overlap=1,
             mlib=MatrixLib(nhom=0),
             loss_ports=False,
     ):
-        self._mlib = mlib
         self.name = name
-        self._t = mlib.promote(np.sqrt(Thr))
-        self._l = mlib.promote(np.sqrt(Lhr))
-        self._r = mlib.promote(np.sqrt(
+        self._loss_ports = loss_ports
+        self.t = mlib.promote(np.sqrt(Thr))
+        self.l = mlib.promote(np.sqrt(Lhr))
+        self.r = mlib.promote(np.sqrt(
             mlib.Id
             - mlib.promote(Thr)
             - mlib.promote(Lhr)
             - mlib.promote(Rar)
         ))
         self.suscept = suscept
+        self.suscept_ss = suscept_ss
         self.lambda_m = lambda_m
-        self.overlap = overlap
-        self._loss_ports = loss_ports
-
-    @property
-    def mlib(self):
-        return self._mlib
-
-    @property
-    def t(self):
-        return self._t
-
-    @property
-    def l(self):
-        return self._l
-
-    @property
-    def r(self):
-        return self._r
-
-    @property
-    def overlap(self):
-        return self._overlap
-
-    @overlap.setter
-    def overlap(self, overlap):
-        self._overlap = self.mlib.promote(overlap)
+        self.overlap = mlib.promote(overlap)
+        self.mlib = mlib
 
     def _optic_edges(self):
         edge_map = {
@@ -394,7 +504,49 @@ class RPMirrorEdge:
 
         # q (amplitude) quadrature to displacement
         def xq_port(fieldsDC):
-            return 2 / scc.c * chi * adjoint(self.overlap @ fieldsDC)
+            return 2 / const.c * chi * adjoint(self.overlap @ fieldsDC)
+
+        xq_fr_i = +xq_port(fieldsDC_fr_i)
+        xq_fr_o = +xq_port(fieldsDC_fr_o)
+        xq_bk_i = -xq_port(fieldsDC_bk_i)
+        xq_bk_o = -xq_port(fieldsDC_bk_o)
+
+        edge_map.update({
+            self.name + ".fr.xq.i": xq_fr_i,
+            self.name + ".fr.xq.o": xq_fr_o,
+            self.name + ".bk.xq.i": xq_bk_i,
+            self.name + ".bk.xq.o": xq_bk_o,
+            self.name + ".fr.px": px_fr,
+            self.name + ".bk.px": px_bk,
+        })
+        return edge_map
+
+    def edgesACSS(self, resultsDC, *args, **kwargs):
+        edge_map = self._optic_edges()
+
+        # DC fields at the mirror faces
+        def get_fieldsDC(tp):
+            try:
+                return resultsDC[self.name + tp]
+            except KeyError:
+                return 0 * self.mlib.Id_v
+
+        fieldsDC_fr_i = get_fieldsDC(".fr.i.tp")
+        fieldsDC_fr_o = get_fieldsDC(".fr.o.tp")
+        fieldsDC_bk_i = get_fieldsDC(".bk.i.tp")
+        fieldsDC_bk_o = get_fieldsDC(".bk.o.tp")
+
+        # displacement to p (phase) quadrature
+        px = 4 * np.pi / self.lambda_m * self.r @ self.overlap
+        px_fr = px @ self.mlib.Mrotation(np.pi/2) @ fieldsDC_fr_i
+        px_bk = px @ self.mlib.Mrotation(np.pi/2) @ fieldsDC_bk_i
+
+        # mechanical susceptibility, reshaped for multiplication
+        chi = self.suscept_ss.ss
+
+        # q (amplitude) quadrature to displacement
+        def xq_port(fieldsDC):
+            return chi @ (2 / const.c * adjoint(self.overlap @ fieldsDC))
 
         xq_fr_i = +xq_port(fieldsDC_fr_i)
         xq_fr_o = +xq_port(fieldsDC_fr_o)

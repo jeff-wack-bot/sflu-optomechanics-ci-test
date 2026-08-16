@@ -168,44 +168,75 @@ The 14 errors are the absent optional `qlance`/Optickle dependency. The
 remaining failure, `models/test_simple_mirror.py::test_sflu_simple_mirror`,
 comes from uncommitted working-tree changes and was not touched.
 
-## Stage 2 — one library, not three
+## Stage 2 — one library, not three (done)
 
-The highest-value structural fix, and fully verifiable.
+The highest-value structural fix. Split into 2a (the matrix library) and 2b
+(the edge library) so each landed with the guard green.
 
-Build a single library from the **union**, based on the intsqz copy (Finding 2):
+### Guard extended first
 
+The existing baseline only covered the intsqz budgets, but this stage changes
+`sflu_components`, whose other consumers are `optics/` and `pi/`. Checking
+those revealed that **`optics/test_simple_cavities.py` and
+`optics/test_radiation_pressure.py` contain zero assertions** — they only plot.
+A bad merge there would have produced a silently wrong figure and a green
+suite.
+
+So the baseline was extended, before any merge, to pin `MatrixLib`'s outputs
+and every edge class's edge maps, from both copies, at `nhom` 0 and 1:
+**58 → 404 arrays.**
+
+### 2a — `MatrixLib`
+
+`fromgwinc/intsqz/lib.py` turned out to be a *strict superset* of
+`sflu_components/lib.py`: `diff` reports three pure-addition hunks
+(`Vnorm_sqA`, `MatrixLib.SQZc`, `MatsHelper`) and zero lines unique to
+`sflu_components`. The merge was therefore the superset, and the fork became a
+re-export shim. Guard afterwards: 0 changed, 3 new (the newly reachable
+`SQZc` / `Vnorm_sqA` probes).
+
+### 2b — the edge classes
+
+Before merging, the two copies' captured edge maps were compared directly:
+**80 of 80 shared entries bit-identical.** `LinkEdge`, `BSEdge`,
+`RPMirrorEdge` and the `.r`/`.t` of `MirrorEdge` all agreed exactly, so the
+merge could not move a number; the copies differed only in feature set and in
+loss-port emission.
+
+The union now lives in `sflu_components/edges.py`. The one real behavioural
+conflict was resolved by making it explicit rather than implicit:
+
+* the intsqz copy **always** emitted `.fr.l` / `.bk.l`;
+* the `sflu_components` copy emitted them **only** when `loss_ports=True`, and
+  its callers depend on that;
+* so the merged class keeps `loss_ports=False` as the default, and the ten
+  intsqz mirror constructions now pass `loss_ports=True` explicitly. Same
+  behaviour, written down instead of implied.
+
+`loss_in_transmission` is kept as a separate parameter: it selects a different
+physical convention (`Lhr` taken out of transmission rather than reflection),
+not a spelling of `loss_ports`.
+
+The hazards flagged in the original plan resolved as follows. Nothing mutates
+edge attributes after construction anywhere in the repo, so properties versus
+plain attributes was immaterial; plain attributes won. `gwinc.const.c` and
+`scipy.constants.c` are bit-identical, so the differing constant sources were
+a non-issue.
+
+**Result.** `fromgwinc/intsqz/lib.py` 540 → 53 lines,
+`fromgwinc/intsqz/optics.py` 532 → 35 lines, both now documented shims.
+
+```python
+sflu_components.lib.MatrixLib is fromgwinc.intsqz.lib.MatrixLib          # True
+sflu_components.edges.MirrorEdge is fromgwinc.intsqz.optics.MirrorEdge   # True
 ```
-sflu_components/lib.py      += Vnorm_sqA, MatrixLib.SQZc, MatsHelper
-sflu_components/edges.py    += SQZEdge, edgesACSS() on every class,
-                               MirrorEdge(loss_in_transmission=)
-```
 
-Then repoint importers one at a time, running the guard after each:
-
-1. add the missing pieces to `sflu_components` — additive, guard must stay green;
-2. switch `fromgwinc/intsqz/lib.py` to re-export from `sflu_components.lib`;
-3. switch `fromgwinc/intsqz/optics.py` to re-export from `sflu_components.edges`;
-4. rewrite the mixed imports in `test_CCwIntSqz.py` / `test_CCwIntFDSqz.py` so
-   one `MatrixLib` is alive per process instead of two;
-5. only then delete the emptied shims.
-
-Merge hazards to handle explicitly, each capable of silently changing numbers:
-
-* `MirrorEdge.__init__` takes `loss_ports=` in one copy and
-  `loss_in_transmission=` in the other. Different meanings; keep both names,
-  do not unify the semantics.
-* `sflu_components` exposes `r`/`t`/`l` as read-only properties, intsqz as
-  plain attributes. Properties are the safer target, but the models assign
-  nothing, so confirm with the guard.
-* `edges.py` imports `scipy.constants`, `optics.py` imports `gwinc.const`.
-  Values are identical, so pick one; the guard proves it.
+Guard exact, suite unchanged at 53 passed / 1 failed / 2 skipped / 14 errors.
 
 `models/{matlib,components,components2}.py` is a third partial copy used only
-by `models/`. Leave it alone in this stage and fold it in later, or declare
-`models/` a frozen historical example set — it is the least-load-bearing corner.
-
-**Verification:** the guard, plus the full suite at parity with the Stage 0
-counts.
+by `models/`. Left alone deliberately — it is the least load-bearing corner,
+and folding it in belongs with Stage 3 or with declaring `models/` a frozen
+historical example set.
 
 ## Stage 3 — models become importable
 
