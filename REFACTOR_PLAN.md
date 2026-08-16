@@ -295,18 +295,53 @@ a mechanical move plus path updates.
 * consider failing the docs build if an example listed in `MODULES` produced no
   figures, so silent breakage is visible.
 
+## Stage 6 — vendor the small half of gwinc, drop the runtime dependency
+
+Evaluated in full in [`docs/GWINC_DEPENDENCY.md`](docs/GWINC_DEPENDENCY.md).
+Summary of the finding, because it changes the answer to the open question
+below:
+
+The gwinc dependency splits along the same lib/params/model seam as everything
+else. `load_budget(path).ifo` — which is what every model calls — is provably a
+pure YAML merge; the `Budget` object is built and discarded. The inherit chain
+leaves the repo exactly once, at gwinc's 336-line `ifo/Aplus/ifo.yaml`. Every
+`.run()` in the repo is a reference comparison curve for a plot, feeding no
+model and no guard.
+
+So:
+
+* **vendor** `struct.py`, `const.py`, `ifo_power`/`dhdl`/`arm_cavity`, and the
+  base `Aplus/ifo.yaml` — about 1,100 lines, and gwinc is Unlicense, so there
+  is no legal friction;
+* **do not vendor** the budget engine — 6,102 lines across nine noise
+  disciplines this project neither develops nor can validate. Cache the
+  reference curves as data and make gwinc an optional dev dependency used only
+  to refresh them.
+
+The motivation is reproducibility rather than line count: today
+`gwinc.load_budget('Aplus')` silently reads whatever pygwinc is installed, and
+the two candidate forks disagree on `Curvature.ITM`, `Curvature.ETM`, and an
+`ifo_power` conditional — differences that move published numbers. Vendoring
+the base parameter file turns that into a line in `git log`. It is the same
+class of defect as Finding 1.
+
+Sequence it **after Stage 3**: vendoring along the lib/params/model seam once
+that seam exists is a far smaller diff than vendoring across today's tangle.
+
 ## What is deliberately *not* in this plan
 
 * **No physics changes.** Not the hash-seed determinism fix, not the SEC/INTSQZ
   angle conventions, not the commented-out parameter blocks in
   `test_CoupledCav`. Each is a decision for whoever owns the model.
-* **No dependency-pinning rework.** The `refactor/intsqz` branch's approach —
-  depend on `gwinc.optomechanicalmodels` from a pygwinc fork instead of
-  vendoring — is a reasonable idea, but `gwinc.optomechanicalmodels` is **not
-  present in the current `wield` environment**, so that branch does not run
-  here today. Vendored-and-working beats unvendored-and-unimportable until
-  someone decides which pygwinc this repo targets. That decision is a
-  prerequisite for reviving `optics/test_DRFPMI.py`.
+* **No adoption of the `refactor/intsqz` dependency approach.** That branch
+  went the other way — depend on `gwinc.optomechanicalmodels` from a pygwinc
+  fork instead of vendoring. It does not run in the current `wield`
+  environment, because `gwinc.optomechanicalmodels` is not installed there.
+  Stage 6 resolves the underlying question in the opposite direction: vendor
+  the small deterministic half and stop depending on *which* pygwinc is
+  present. Reviving `optics/test_DRFPMI.py` still needs a pygwinc that provides
+  `gwinc.plant` or `gwinc.noise.quantum2`, and that remains a separate,
+  optional decision.
 * **No renaming of `fromgwinc/`.** It becomes wrong once Stage 1 removes the
   vendored gwinc code, but renaming it touches every import in the trusted
   reference model. Do it last, or never.
