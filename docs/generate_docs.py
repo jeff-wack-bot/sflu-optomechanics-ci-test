@@ -37,6 +37,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DOCS = Path(__file__).resolve().parent
 SITE_SRC = DOCS / "docs"
 IMG_DIR = SITE_SRC / "img"
+# Hand-written pages and assets, copied into the site verbatim.
+STATIC = DOCS / "static"
 
 # Trust levels, as characterised by the maintainers.  Surfaced on each page so
 # a reader knows how much review the code they are reading has had.
@@ -49,6 +51,11 @@ TRUST = {
         "Reference implementation",
         "The best-known-good state of the internal squeezing model. "
         "Changes here should be checked against the numerical baselines.",
+    ),
+    "validated": (
+        "Validated against the paper",
+        "Rebuilt from a paper's description and checked, by assertions in the "
+        "example itself, against the paper's own closed-form results.",
     ),
     "single-author": (
         "Single author",
@@ -79,6 +86,9 @@ LAYERS = {
     "sflu._vendor.gwinc": "lib (vendored from gwinc)",
     "sflu._vendor.gwinc.noises": "lib (vendored from gwinc)",
     "sflu.params": "params (ifo yaml -> params struct)",
+    "sflu.readout": "lib",
+    "sflu.topologies": "lib",
+    "sflu.papers": "model (paper reproductions)",
     "sflu.models": "model",
     "sflu.models.budget": "model (shared noise budget)",
     "sflu.models.coupled_cavity": "model",
@@ -152,6 +162,55 @@ MODULES = [
         "title": "Parametric instability gain",
         "section": "Models",
         "trust": "single-author",
+    },
+    # --- paper reproductions --------------------------------------------
+    {
+        "path": "papers/test_klmtv2001.py",
+        "title": "KLMTV 2001: QND interferometers",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_buonanno_chen2001.py",
+        "title": "Buonanno & Chen 2001: signal recycling",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_buonanno_chen2002.py",
+        "title": "Buonanno & Chen 2002: optical springs",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_buonanno_chen2003.py",
+        "title": "Buonanno & Chen 2003: scaling law",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_harms2003.py",
+        "title": "Harms et al. 2003: squeezed-input signal recycling",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_kwee2014.py",
+        "title": "Kwee et al. 2014: filter-cavity decoherence",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_purdue_chen2002.py",
+        "title": "Purdue & Chen 2002: speed meter",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_korobko2019.py",
+        "title": "Korobko et al. 2019: quantum expander",
+        "section": "Paper reproductions",
+        "trust": "validated",
     },
     # --- internal squeezing ---------------------------------------------
     {
@@ -457,7 +516,7 @@ def render_page(info):
     out = [f"# {info['title']}\n"]
 
     label, note = TRUST[info["trust"]]
-    kind = {"reviewed": "note", "reference": "info",
+    kind = {"reviewed": "note", "reference": "info", "validated": "success",
             "single-author": "warning"}[info["trust"]]
     out.append(f'!!! {kind} "Review status: {label}"\n')
     out.append(f"    {note}\n")
@@ -617,7 +676,13 @@ theme:
 nav:
 {nav_block}
 
+extra_javascript:
+  - js/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
 markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
   - admonition
   - attr_list
   - md_in_html
@@ -693,6 +758,8 @@ def main():
     for src, dest in all_copies:
         shutil.copy2(src, IMG_DIR / dest)
 
+    if STATIC.is_dir():
+        shutil.copytree(STATIC, SITE_SRC, dirs_exist_ok=True)
     (SITE_SRC / "index.md").write_text(render_index(built))
     (DOCS / "mkdocs.yml").write_text(render_mkdocs(built))
     print(f"\n{len(built)} pages, {len(all_copies)} figures")
