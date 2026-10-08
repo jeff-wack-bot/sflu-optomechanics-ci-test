@@ -21,7 +21,7 @@ The only edit is the Struct import, which was relative to the gwinc package.
 """
 from __future__ import division
 import numpy as np
-from gwinc.struct import Struct
+from sflu._vendor.gwinc import Struct
 
 
 def Minv(M):

@@ -8,8 +8,8 @@ Its topology is loaded from a serialized SFLU graph rather than built in code.
 import os
 
 import numpy as np
-from gwinc import const
-from gwinc.struct import Struct
+from sflu._vendor.gwinc import const
+from sflu._vendor.gwinc import Struct
 from wield.control.SFLU import SFLU
 
 from sflu_components import edges

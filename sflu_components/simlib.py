@@ -2,7 +2,7 @@
 Functions for checking with Optickle and Finesse models (using Qlance)
 """
 import os
-from gwinc.struct import Struct
+from sflu._vendor.gwinc import Struct
 import inspect
 from hashlib import sha1
 

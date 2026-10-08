@@ -5,10 +5,9 @@ Two distinct things live under this package, which used to sit in one
 directory looking alike:
 
 ``sflu/params/ifo/*.yaml``
-    IFO **parameter sets** -- `Ahat*`, `Aplus*`, `Asharp*`. Consumed by
-    ``gwinc.load_budget``. They form an inheritance chain via ``+inherit``,
-    resolved relative to each file, and terminating at gwinc's own built-in
-    ``Aplus`` budget.
+    IFO **parameter sets** -- `Ahat*`, `Aplus*`, `Asharp*`. They form an
+    inheritance chain via ``+inherit``, resolved relative to each file, and
+    terminating at the vendored ``sflu/_vendor/gwinc/ifo/Aplus.yaml``.
 
 ``sflu/params/standardize.py``
     The ifo Struct to derived-parameters step (``standardize_params``).
@@ -56,13 +55,14 @@ def available():
 def load_ifo(name):
     """Load an IFO parameter set by name and return its ``ifo`` Struct.
 
-    This resolves the ``+inherit`` chain. Note that it returns the parameters
-    only: the ``Budget`` object ``gwinc.load_budget`` builds along the way is
-    discarded, because no model uses it. See ``docs/GWINC_DEPENDENCY.md``.
+    This resolves the ``+inherit`` chain without gwinc. It returns exactly what
+    ``gwinc.load_budget(ifo_path(name)).ifo`` used to -- verified key by key
+    for every set when it was vendored -- but no longer depends on which
+    pygwinc is installed. See ``docs/GWINC_DEPENDENCY.md``.
     """
-    import gwinc
+    from sflu._vendor.gwinc import load_struct
 
-    return gwinc.load_budget(ifo_path(name)).ifo
+    return load_struct(ifo_path(name))
 
 
 __all__ = [

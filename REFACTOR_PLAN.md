@@ -513,7 +513,35 @@ longer overwrite each other.
 Site is now **13 pages, 59 figures** (was 56), `mkdocs build` clean with zero
 broken links.
 
-## Stage 6 — vendor the small half of gwinc, drop the runtime dependency
+## Stage 6 — vendor the small half of gwinc (done)
+
+```
+sflu/_vendor/gwinc/__init__.py   load_struct(): the +inherit merge, nothing else
+sflu/_vendor/gwinc/struct.py     Struct          (upstream, imports made lazy)
+sflu/_vendor/gwinc/const.py      c, hbar, ...    (upstream, unchanged)
+sflu/_vendor/gwinc/noises.py     ifo_power, dhdl, arm_cavity (upstream bodies)
+sflu/_vendor/gwinc/ifo/Aplus.yaml  the base every parameter set inherits from
+```
+
+`sflu.params.load_ifo()` no longer calls gwinc. Importing `sflu.models`,
+`sflu.params`, `sflu_components` and `tf_lib` now loads **zero** gwinc modules.
+gwinc is still installed in CI, but only for the reference curves a few
+examples draw underneath their results, and for `models/`, which was left on
+`gwinc.struct` because it holds uncommitted work.
+
+**Verification.** Before switching, the vendored loader was compared with
+`gwinc.load_budget(path).ifo` key by key for all 13 parameter sets: identical
+(NaN-aware). `tools/test_vendored_gwinc.py` keeps checking that, plus
+`ifo_power` and `dhdl`, whenever gwinc is importable, and skips otherwise.
+Guard exact against a local baseline (`make guard-local`, new, see below).
+
+**`make guard-local`.** The committed baseline is bit-exact only on the machine
+that recorded it, and `guard-ci`'s 1e-2 tolerance cannot prove a move changed
+nothing. `capture_baseline --dir` and `make baseline-local` / `guard-local`
+record an untracked reference on whatever machine you are on and then check
+against it exactly. Every stage from here on was checked that way.
+
+### Stage 6 — original evaluation
 
 Evaluated in full in [`docs/GWINC_DEPENDENCY.md`](docs/GWINC_DEPENDENCY.md).
 Summary of the finding, because it changes the answer to the open question

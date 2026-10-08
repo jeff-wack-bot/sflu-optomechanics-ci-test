@@ -7,8 +7,8 @@ into the derived quantities every model consumes. Models take the result and
 never re-read the ifo for these.
 """
 import numpy as np
-from gwinc.struct import Struct
-from gwinc.ifo.noises import ifo_power
+from sflu._vendor.gwinc import Struct
+from sflu._vendor.gwinc.noises import ifo_power
 
 from sflu_components.lib import MatrixLib, matrix_stack
 

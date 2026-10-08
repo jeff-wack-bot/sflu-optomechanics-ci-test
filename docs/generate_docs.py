@@ -69,6 +69,8 @@ LAYERS = {
     "models.matlib": "lib (models-local copy)",
     "models.components": "lib (models-local copy)",
     "models.components2": "lib (models-local copy)",
+    "sflu._vendor.gwinc": "lib (vendored from gwinc)",
+    "sflu._vendor.gwinc.noises": "lib (vendored from gwinc)",
     "sflu.params": "params (ifo yaml -> params struct)",
     "sflu.models": "model",
     "sflu.models.budget": "model (shared noise budget)",

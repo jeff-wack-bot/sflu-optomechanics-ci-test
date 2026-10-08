@@ -1,5 +1,9 @@
 # Can we drop the gwinc dependency?
 
+> **Status: done (Stage 6).** The model half is vendored in
+> `sflu/_vendor/gwinc/`; gwinc is now optional, used only for reference
+> curves. This page is the evaluation that led there, kept as written.
+
 Short answer: **yes for the model, no for the reference budgets.** The
 dependency is not one thing, and the right move is different for each half.
 Vendoring the model half is a clear win and costs about 1,100 lines. Vendoring

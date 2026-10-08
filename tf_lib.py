@@ -1,6 +1,6 @@
 import numpy as np
-from gwinc import const
-from gwinc.ifo.noises import arm_cavity
+from sflu._vendor.gwinc import const
+from sflu._vendor.gwinc.noises import arm_cavity
 # from qlance.plotting import plotTF
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec

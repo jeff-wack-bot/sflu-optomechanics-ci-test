@@ -13,8 +13,8 @@ from wield.bunch import Bunch
 from wield.utilities.mpl import mplfigB
 import gwinc
 
-from gwinc import const
-from gwinc.struct import Struct
+from sflu._vendor.gwinc import const
+from sflu._vendor.gwinc import Struct
 
 from sflu.models import (
     CoupledCavity,
@@ -58,8 +58,7 @@ def test_intFDsqz_param_sweep(fpath_join, tpath_join, plotTF, pprint):
     aplQB = aplB.Quantum
 
     # base configuration
-    budget = gwinc.load_budget(ifo_path('AhatTestIntFC'))
-    ifo_base = budget.ifo
+    ifo_base = load_ifo('AhatTestIntFC')
     ifo_base.Optics.INTSQ_loss = 1000e-6
 
     # homodyne angle: pi/2 - 20 deg (near maximum sensitivity)
@@ -159,8 +158,7 @@ def test_intFDsqz_homodyne_sweep(fpath_join, tpath_join, plotTF, pprint):
     aplQB = aplB.Quantum
 
     # base configuration
-    budget = gwinc.load_budget(ifo_path('AhatTestIntFC'))
-    ifo_base = budget.ifo
+    ifo_base = load_ifo('AhatTestIntFC')
     ifo_base.Optics.INTSQ_loss = 1000e-6
 
     # ---- sweep grid ----
@@ -251,12 +249,10 @@ def test_signal_response_comparison(fpath_join, tpath_join, plotTF, pprint):
     F_Hz = np.geomspace(10, 30e3, 1000)
 
     # load configs
-    budget_intFC = gwinc.load_budget(ifo_path('AhatTestIntFC'))
-    ifo_intFC = budget_intFC.ifo
+    ifo_intFC = load_ifo('AhatTestIntFC')
     ifo_intFC.Optics.INTSQ_loss = 1000e-6
 
-    budget_intSqz = gwinc.load_budget(ifo_path('AhatTest'))
-    ifo_intSqz = budget_intSqz.ifo
+    ifo_intSqz = load_ifo('AhatTest')
     ifo_intSqz.Optics.INTSQ_loss = 1000e-6
 
     # 1. Coupled cavity with external FD squeezing (no internal squeezer)

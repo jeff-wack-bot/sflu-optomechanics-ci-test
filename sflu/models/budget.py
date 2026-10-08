@@ -20,8 +20,8 @@ cavity precedes it, and whether the result is reported as displacement or as
 strain.
 """
 import numpy as np
-from gwinc import const
-from gwinc.ifo.noises import dhdl
+from sflu._vendor.gwinc import const
+from sflu._vendor.gwinc.noises import dhdl
 from wield.bunch import Bunch
 
 from sflu_components.lib import MatsHelper, Vnorm_sq, Vnorm_sqA, adjoint

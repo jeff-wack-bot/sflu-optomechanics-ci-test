@@ -14,7 +14,7 @@ Split into the two things it is:
 ``intSqzQuantum()`` runs both and hands the result to the shared budget.
 """
 import numpy as np
-from gwinc.struct import Struct
+from sflu._vendor.gwinc import Struct
 from wield.bunch import Bunch
 from wield.control import SISO
 from wield.control.SFLU import SFLU

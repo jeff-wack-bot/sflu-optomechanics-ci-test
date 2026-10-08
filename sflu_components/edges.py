@@ -24,8 +24,8 @@ Two conventions survive the merge and are deliberately kept distinct:
     beamsplitter loss model. Not a spelling of ``loss_ports``.
 """
 import numpy as np
-from gwinc import const
-from gwinc.struct import Struct
+from sflu._vendor.gwinc import const
+from sflu._vendor.gwinc import Struct
 from .lib import MatrixLib, adjoint, block_diag
 
 pi2i = 2j*np.pi

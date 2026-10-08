@@ -9,8 +9,8 @@ rotates with frequency without an external filter cavity.
 ``CoupledCavityIntFC()``   plant
 """
 import numpy as np
-from gwinc import const
-from gwinc.struct import Struct
+from sflu._vendor.gwinc import const
+from sflu._vendor.gwinc import Struct
 from wield.bunch import Bunch
 from wield.control import SISO
 from wield.control.SFLU import SFLU
