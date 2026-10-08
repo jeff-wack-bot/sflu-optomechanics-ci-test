@@ -602,6 +602,52 @@ had already been deleted in Jeff's working tree.
 **Verification.** Guard exact against the local baseline; `make survey`
 0 of 49; identity of every alias checked.
 
+## Stage 8 — a model-building API (done)
+
+Every model repeated the same ~40 lines of DC/AC solve and its own ad hoc
+readout arithmetic. Three small modules now hold that once:
+
+| module | contents |
+|---|---|
+| `sflu.solve` | `build`, `edge_map`, `solve_dc`, `scale_dc`, `solve_ac` |
+| `sflu.readout` | `quadrature`, `squeezed`, `noise_budget`, `referred_psd`, with the quadrature, angle and PSD conventions written down in one place |
+| `sflu.topologies` | `fp_arm`, `signal_recycled` (optionally with an internal squeezer), `filter_cavity`, `cascade`, `detuning_rad`, `half_bandwidth_T` |
+
+The three reference models were moved onto `solve.solve_ac`. That stayed
+bit-identical: the guard covers the state-space path, and the
+`use_SS=False` path, which it does not cover, was compared directly against
+the previous commit.
+
+The API was validated before anything was built on it, by reproducing KLMTV
+(next stage). That validation settled three things the code had never written
+down:
+
+* the vacuum level is $\hbar\omega_0/2$ per quadrature, single-sided, in the
+  edges' sqrt(W) units;
+* the radiation-pressure term enters as $b_2 = a_2 + \mathcal K a_1$, the
+  opposite sign to KLMTV, so literature angles must be negated;
+* cavity bandwidths must be set from the **exact** pole, not the papers'
+  first-order $\gamma = Tc/4L$. The difference is 1%, and back-action
+  cancellation amplifies it into a factor of 30.
+
+## Stage 9 — the docs become documentation (done)
+
+The site was 13 generated example pages. It now also has:
+
+* **Guide**: four hand-written pages (getting started, how the code is
+  organised, conventions, writing a model). `tools/test_docs_snippets.py`
+  executes their Python, so they cannot rot unnoticed either.
+* **API reference**: rendered from docstrings by mkdocstrings.
+* **Paper reproductions**: eight interferometers from the literature, each
+  with its own figures and assertions (below).
+* MathJax, and a landing page that leads with the above.
+
+CI gained a **blocking** `make papers` step, which runs the paper
+reproductions and the other checks against independent references. mkdocs is
+pinned below 2.0, which removes the plugin system the API reference needs.
+The repo is pip-installable (`pyproject.toml`; `setup.sh` runs
+`pip install -e .`).
+
 ## What is deliberately *not* in this plan
 
 * **No physics changes.** Not the hash-seed determinism fix, not the SEC/INTSQZ
