@@ -1,0 +1,3 @@
+# `sflu.solve`
+
+::: sflu.solve

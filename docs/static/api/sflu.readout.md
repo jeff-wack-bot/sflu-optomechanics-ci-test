@@ -1,0 +1,3 @@
+# `sflu.readout`
+
+::: sflu.readout

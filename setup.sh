@@ -47,7 +47,7 @@ PIP_PACKAGES=(
   control
   "gwinc==0.6.2"
   pytest pytest-watcher
-  mkdocs mkdocs-material
+  "mkdocs>=1.6,<2" "mkdocs-material>=9.5,<10" "mkdocstrings[python]>=0.26"
 )
 
 log() { echo "== $*"; }
@@ -114,6 +114,11 @@ install_dev_deps() {
     done
 }
 
+install_self() {
+    log "this repository (editable), so 'import sflu' works from anywhere"
+    conda run -n "${CONDA_ENV}" pip install -e "${REPO_DIR}"
+}
+
 verify() {
     log "verifying"
     conda run -n "${CONDA_ENV}" python - <<'PY'
@@ -139,6 +144,7 @@ install_apt_deps
 create_conda_env
 install_pip_packages
 install_dev_deps
+install_self
 verify
 
 cat <<EOF

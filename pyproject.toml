@@ -1,3 +1,30 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sflu-optomechanics"
+version = "0.1.0"
+description = "Signal-flow (SFLU) models of optomechanical interferometers"
+readme = "README.md"
+requires-python = ">=3.10"
+# wield-control, wield-bunch and wield-utilities are not on PyPI; setup.sh
+# clones and installs them (see deps/). gwinc is optional: only the reference
+# curves some examples draw need it.
+dependencies = ["numpy", "scipy", "matplotlib", "pyyaml", "networkx"]
+
+[project.optional-dependencies]
+reference = ["gwinc==0.6.2"]
+docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5,<10", "mkdocstrings[python]>=0.26"]
+
+[tool.setuptools.packages.find]
+include = ["sflu*", "sflu_components"]
+
+[tool.setuptools.package-data]
+"sflu._vendor.gwinc" = ["LICENSE", "ifo/*.yaml"]
+"sflu.params" = ["ifo/*.yaml"]
+"sflu.models" = ["topologies/*.yaml"]
+
 [tool.pytest-watcher]
 now = true
 clear = false

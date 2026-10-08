@@ -40,6 +40,22 @@ IMG_DIR = SITE_SRC / "img"
 # Hand-written pages and assets, copied into the site verbatim.
 STATIC = DOCS / "static"
 
+# Hand-written guide pages, in nav order. tools/test_docs_snippets.py runs the
+# Python in them, so they cannot silently rot either.
+GUIDE = [
+    ("Getting started", "guide/getting-started.md"),
+    ("How the code is organised", "guide/architecture.md"),
+    ("Conventions", "guide/conventions.md"),
+    ("Writing a model", "guide/writing-a-model.md"),
+]
+
+# API reference: one page per module, rendered from docstrings by mkdocstrings.
+API = [
+    "sflu.lib", "sflu.edges", "sflu.elements", "sflu.topologies",
+    "sflu.solve", "sflu.readout", "sflu.params", "sflu.models",
+    "sflu.papers", "sflu._vendor.gwinc",
+]
+
 # Trust levels, as characterised by the maintainers.  Surfaced on each page so
 # a reader knows how much review the code they are reading has had.
 TRUST = {
@@ -97,6 +113,55 @@ LAYERS = {
 }
 
 MODULES = [
+    # --- paper reproductions --------------------------------------------
+    {
+        "path": "papers/test_klmtv2001.py",
+        "title": "KLMTV 2001: QND interferometers",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_buonanno_chen2001.py",
+        "title": "Buonanno & Chen 2001: signal recycling",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_buonanno_chen2002.py",
+        "title": "Buonanno & Chen 2002: optical springs",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_buonanno_chen2003.py",
+        "title": "Buonanno & Chen 2003: scaling law",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_harms2003.py",
+        "title": "Harms et al. 2003: squeezed-input signal recycling",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_kwee2014.py",
+        "title": "Kwee et al. 2014: filter-cavity decoherence",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_purdue_chen2002.py",
+        "title": "Purdue & Chen 2002: speed meter",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
+    {
+        "path": "papers/test_korobko2019.py",
+        "title": "Korobko et al. 2019: quantum expander",
+        "section": "Paper reproductions",
+        "trust": "validated",
+    },
     # --- library layer -------------------------------------------------
     {
         "path": "optics/test_lib.py",
@@ -162,55 +227,6 @@ MODULES = [
         "title": "Parametric instability gain",
         "section": "Models",
         "trust": "single-author",
-    },
-    # --- paper reproductions --------------------------------------------
-    {
-        "path": "papers/test_klmtv2001.py",
-        "title": "KLMTV 2001: QND interferometers",
-        "section": "Paper reproductions",
-        "trust": "validated",
-    },
-    {
-        "path": "papers/test_buonanno_chen2001.py",
-        "title": "Buonanno & Chen 2001: signal recycling",
-        "section": "Paper reproductions",
-        "trust": "validated",
-    },
-    {
-        "path": "papers/test_buonanno_chen2002.py",
-        "title": "Buonanno & Chen 2002: optical springs",
-        "section": "Paper reproductions",
-        "trust": "validated",
-    },
-    {
-        "path": "papers/test_buonanno_chen2003.py",
-        "title": "Buonanno & Chen 2003: scaling law",
-        "section": "Paper reproductions",
-        "trust": "validated",
-    },
-    {
-        "path": "papers/test_harms2003.py",
-        "title": "Harms et al. 2003: squeezed-input signal recycling",
-        "section": "Paper reproductions",
-        "trust": "validated",
-    },
-    {
-        "path": "papers/test_kwee2014.py",
-        "title": "Kwee et al. 2014: filter-cavity decoherence",
-        "section": "Paper reproductions",
-        "trust": "validated",
-    },
-    {
-        "path": "papers/test_purdue_chen2002.py",
-        "title": "Purdue & Chen 2002: speed meter",
-        "section": "Paper reproductions",
-        "trust": "validated",
-    },
-    {
-        "path": "papers/test_korobko2019.py",
-        "title": "Korobko et al. 2019: quantum expander",
-        "section": "Paper reproductions",
-        "trust": "validated",
     },
     # --- internal squeezing ---------------------------------------------
     {
@@ -591,34 +607,39 @@ def render_index(built):
     out = [
         "# SFLU Optomechanics",
         "",
-        "Signal-flow (SFLU) models of optomechanical interferometers, with "
-        "internal squeezing.",
+        "Linear, frequency-domain models of optomechanical interferometers -- "
+        "radiation pressure, signal recycling, squeezing, filter cavities, "
+        "internal squeezing, mode mismatch -- built as signal-flow graphs and "
+        "solved with SFLU (`wield.control`).",
         "",
-        "Every page below is generated directly from a runnable example in the "
-        "repository: the prose is the example's own comments, the figures are "
-        "the ones it produced on this build. Nothing here is written twice, so "
-        "the documentation cannot drift from the code.",
+        "Start with [Getting started](guide/getting-started.md), then "
+        "[How the code is organised](guide/architecture.md). Read the "
+        "[Conventions](guide/conventions.md) page before comparing anything "
+        "with a paper.",
         "",
-        "## How the code is layered",
+        "## Paper reproductions",
         "",
-        "```",
-        "params (*.yaml)  ->  ifo Struct",
-        "        |",
-        "        v",
-        "lib      sflu_components/{lib,edges,elements}.py   quadrature algebra,",
-        "                                                   edge + graph components",
-        "        |",
-        "        v",
-        "model    topology (SFLU graph)  ->  plant (edges -> transfer functions)",
-        "                                ->  budget (transfer functions -> PSD)",
-        "        |",
-        "        v",
-        "example  test_*.py               runs a model, makes figures",
-        "```",
+        "Classic results from the gravitational-wave quantum-noise literature, "
+        "rebuilt from the papers' descriptions. Each page reproduces the "
+        "paper's figures and *asserts* that the SFLU model agrees with the "
+        "paper's own closed-form results, so a passing build is a check of "
+        "the models as well as a rendering of them.",
         "",
-        "See `REFACTOR_PLAN.md` and `docs/DEPENDENCIES.md` in the repository "
-        "for the current state of that layering and the plan to make it "
-        "explicit.",
+    ]
+    papers = [i for i in built if i["section"] == "Paper reproductions"]
+    for info in papers:
+        p = Path(info["path"])
+        out.append(f"- [{info['title']}]({p.parent}/{p.stem}.md)")
+    out += [
+        "",
+        "## Every page is generated from code",
+        "",
+        "Apart from the guide, each page here is a runnable example in the "
+        "repository. Its prose is the example's own comments and its figures "
+        "are the ones it produced on this build, so nothing is written twice "
+        "and the documentation cannot drift from the code. The build fails "
+        "if an example breaks, stops producing figures, or appears without a "
+        "page.",
         "",
         "## Review status",
         "",
@@ -630,11 +651,13 @@ def render_index(built):
     for _key, (label, note) in TRUST.items():
         out.append(f"| **{label}** | {note} |")
     out.append("")
-    out.append("## Examples")
+    out.append("## Other examples")
     out.append("")
 
     sections = {}
     for info in built:
+        if info["section"] == "Paper reproductions":
+            continue
         sections.setdefault(info["section"], []).append(info)
     for section, entries in sections.items():
         out.append(f"### {section}")
@@ -650,7 +673,9 @@ def render_mkdocs(built):
     sections = {}
     for info in built:
         sections.setdefault(info["section"], []).append(info)
-    nav = ["  - Home: index.md"]
+    nav = ["  - Home: index.md", '  - "Guide":']
+    for title, page in GUIDE:
+        nav.append(f'    - "{title}": {page}')
     for section, entries in sections.items():
         nav.append(f'  - "{section}":')
         for info in entries:
@@ -658,6 +683,9 @@ def render_mkdocs(built):
             # Quoted: titles may contain a colon, which is YAML-significant.
             title = info["title"].replace('"', "'")
             nav.append(f'    - "{title}": {p.parent}/{p.stem}.md')
+    nav.append('  - "API reference":')
+    for mod in API:
+        nav.append(f'    - "{mod}": api/{mod}.md')
     nav_block = "\n".join(nav)
     return f"""# Generated by docs/generate_docs.py -- do not edit by hand.
 site_name: SFLU Optomechanics
@@ -675,6 +703,19 @@ theme:
 
 nav:
 {nav_block}
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [..]
+          options:
+            docstring_style: numpy
+            show_source: true
+            show_root_heading: false
+            members_order: source
+            filters: ["!^_"]
 
 extra_javascript:
   - js/mathjax.js
@@ -760,6 +801,9 @@ def main():
 
     if STATIC.is_dir():
         shutil.copytree(STATIC, SITE_SRC, dirs_exist_ok=True)
+    for page in [p for _, p in GUIDE] + [f"api/{m}.md" for m in API]:
+        if not (SITE_SRC / page).exists():
+            problems.append(f"nav lists {page}, which docs/static/ does not provide")
     (SITE_SRC / "index.md").write_text(render_index(built))
     (DOCS / "mkdocs.yml").write_text(render_mkdocs(built))
     print(f"\n{len(built)} pages, {len(all_copies)} figures")

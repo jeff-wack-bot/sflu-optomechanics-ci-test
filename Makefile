@@ -7,11 +7,12 @@ export PYTHONHASHSEED := 0
 
 PYTHON ?= python
 
-.PHONY: help test guard guard-ci guard-local baseline baseline-local survey docs docs-quick docs-strict \
+.PHONY: help test papers guard guard-ci guard-local baseline baseline-local survey docs docs-quick docs-strict \
         docs-site serve clean-docs
 
 help:
 	@echo "test        run the test suite (reproducible)"
+	@echo "papers      the paper reproductions and the checks on the new code (blocking in CI)"
 	@echo "guard       check model outputs against the stored baselines (exact)"
 	@echo "guard-ci    same, with cross-machine tolerances (what CI runs)"
 	@echo "guard-local exact check against a baseline recorded on this machine"
@@ -26,6 +27,13 @@ help:
 
 test:
 	$(PYTHON) -m pytest
+
+# Everything here asserts against an independent result -- a paper's closed
+# form, gwinc itself, or the docs' own code blocks -- and is expected to pass
+# everywhere, so CI blocks on it (unlike the full suite; see ci.yml).
+papers:
+	$(PYTHON) -m pytest papers tools/test_vendored_gwinc.py tools/test_docs_snippets.py \
+		tools/test_docs_config.py tools/test_ci_config.py
 
 guard:
 	$(PYTHON) -m pytest tools/regression/test_regression.py
