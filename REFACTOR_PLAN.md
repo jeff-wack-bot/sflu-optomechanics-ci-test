@@ -648,6 +648,50 @@ pinned below 2.0, which removes the plugin system the API reference needs.
 The repo is pip-installable (`pyproject.toml`; `setup.sh` runs
 `pip install -e .`).
 
+## Paper reproductions — what they found
+
+Eight papers, each with an SFLU model in `sflu/papers/` and an example in
+`papers/` that asserts agreement with the paper's closed forms (`make papers`,
+blocking in CI):
+
+| paper | reproduced | agreement |
+|---|---|---|
+| KLMTV 2001 | Figs. 4, 10; filter cavities realised as graphs | 0.12% |
+| Buonanno & Chen 2001 | Figs. 2–6, lossy Fig. 8 | ≤0.3% (first-order-in-loss formulas) |
+| Buonanno & Chen 2002 | Figs. 6/7, 9, 10/11 (responses, poles at complex frequency) | 3e-5 γ for roots |
+| Buonanno & Chen 2003 | Figs. 4, 5, 8; the scaling law itself | 1e-12 against exact forms |
+| Harms et al. 2003 | Figs. 2–5 | 1e-11 |
+| Kwee et al. 2014 | Fig. 2, every mechanism, mismatch with one HOM | 0.002 dB |
+| Purdue & Chen 2002 | Figs. 6, 8, 10, 12 | ≤0.6% |
+| Korobko et al. 2019 | Fig. 3 exactly; Fig. S2 approximately | 1e-11 (Fig. 3) |
+
+Every paper had at least one error or ambiguity, and each is shown on its page
+next to the corrected form (KLMTV's Eq. 81/88 half-sum and Eq. 90 signs;
+BC2001's N21; Harms's Table II K and h_SQL; Kwee's detuning sign and
+phase-noise quadrature; Purdue–Chen's κ→2κ; Korobko's Eqs. S18 and S94; and
+more).
+
+### One finding about this repository's own model — for its owners
+
+While building the quantum expander, the Korobko reproduction looked at how
+`sflu.models.coupled_cavity` places its internal squeezer. It uses two
+`SQZEdge`s, `INTSQZ.armto` and `INTSQZ.armfr`, with **opposite** `sqzDB`. In a
+graph where the two passes share a frame, that is squeeze-then-unsqueeze: the
+round trip has no parametric gain. The Korobko model needs the **same** sign
+in both directions to get the expander's loop gain. It checked numerically
+that with opposite signs, no radiation pressure and no loss, the noise is
+exactly $e^{-2q}$ times the baseline at every frequency (2.9e-15). Only the
+signal is amplified, which is not an expander.
+
+That does not make the reference model wrong. The opposite-sign arrangement
+is a legitimate physical choice: a crystal sitting a quarter of the pump's
+standing-wave period away from where Korobko's sits. But it is a different
+device from the textbook quantum expander, and the reference model's 17 dB
+per pass only makes physical sense under that reading. **Not changed here**,
+for the same reason as everything else in "not in this plan": it is a physics
+decision for whoever owns the model. `papers/test_korobko2019.py::
+test_crystal_orientation` shows both cases side by side.
+
 ## What is deliberately *not* in this plan
 
 * **No physics changes.** Not the hash-seed determinism fix, not the SEC/INTSQZ
