@@ -12,9 +12,9 @@ differed only in which nodes were asked for. Here they are four functions:
 ``solve_ac(sflu, edge_objs, mlib, ...)``  transfer matrices to a readout
 
 None of this changes what a model computes. The reference internal-squeezing
-models still spell the steps out, because their numbers are pinned bit for bit
-by ``tools/regression``; new models, including everything in ``sflu.papers``,
-use these.
+models in ``sflu.models`` were moved onto ``solve_ac`` and stayed bit-identical
+on both the state-space and frequency-by-frequency paths; everything in
+``sflu.papers`` is built on these functions from the start.
 
 Graphs are reduced in place by ``reduce_auto()``, so build a fresh topology
 for every solve rather than reusing one.

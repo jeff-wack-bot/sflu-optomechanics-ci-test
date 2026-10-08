@@ -15,7 +15,7 @@ from wield.bunch import Bunch
 from wield.control import SISO
 from wield.control.SFLU import SFLU
 
-from sflu import edges, elements
+from sflu import edges, elements, solve
 from sflu.models.budget import accumulate, quantum_budget
 from sflu.params import arm_gouyRT, standardize_params
 
@@ -335,28 +335,13 @@ def CoupledCavityIntFC(
         "SEM.frL.i",
     }
 
-    if use_SS:
-        for edge_obj in edge_objs.values():
-            edge_map.update(edge_obj.edgesACSS(F_Hz=F_Hz, resultsDC=resultsDC))
-        compAC = sflu.SScomputer(eye=mlib.Id)
-        compAC.SScompletion(edge_map)
-
-        resultsAC = compAC.inverse_row_fresponse(
-            Rmap=inverse_row_Rmap,
-            Cset=inverse_row_Cset,
-            F_Hz=F_Hz,
-        )
-
-    if (not use_SS):
-        for edge_obj in edge_objs.values():
-            edge_map.update(edge_obj.edgesAC(F_Hz=F_Hz, resultsDC=resultsDC))
-
-        compAC = sflu.computer(eye=mlib.Id)
-        compAC.compute(edge_map=edge_map)
-        resultsAC = compAC.inverse_row(
-            Rmap=inverse_row_Rmap,
-            Cset=inverse_row_Cset,
-        )
+    (readout, _), = inverse_row_Rmap.items()
+    resultsAC = solve.solve_ac(
+        sflu, edge_objs, mlib, F_Hz,
+        readout=readout, inputs=inverse_row_Cset,
+        resultsDC=resultsDC,
+        extra=edge_map, use_SS=use_SS,
+    )
 
     return dict(locals())
 

@@ -42,9 +42,10 @@ keep them visibly apart:
    matrices from every input to the readout. `sflu.readout` turns those into a
    noise spectrum for a given homodyne angle and input state.
 
-The reference internal-squeezing models in `sflu.models` predate `sflu.solve`
-and spell out the same steps by hand. Their numbers are pinned bit for bit by
-`tools/regression/`, so they were moved without being rewritten.
+The reference internal-squeezing models in `sflu.models` predate the paper
+models but solve through the same `sflu.solve.solve_ac`. Their numbers are
+pinned bit for bit by `tools/regression/`, and moving them onto it changed
+none of them.
 
 ## Where things used to be
 
