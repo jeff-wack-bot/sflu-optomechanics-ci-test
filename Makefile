@@ -32,7 +32,7 @@ test:
 # form, gwinc itself, or the docs' own code blocks -- and is expected to pass
 # everywhere, so CI blocks on it (unlike the full suite; see ci.yml).
 papers:
-	$(PYTHON) -m pytest papers tools/test_vendored_gwinc.py tools/test_docs_snippets.py \
+	$(PYTHON) -m pytest papers tools/test_vendored_gwinc.py tools/test_docs_snippets.py tools/test_readout.py \
 		tools/test_docs_config.py tools/test_ci_config.py
 
 guard:

@@ -263,8 +263,13 @@ def pprint(request, tpath_join):
 
 
 def tpath_raw_make(request):
+    # <dir>/tresults/<module>/<test>: keyed by module as well as test name, so
+    # two examples in one directory that both define test_fig2 (as several
+    # papers/ modules do) cannot overwrite each other's figures.
     if isinstance(request.node, pytest.Function):
-        return relfile_test(request.node.function.__code__.co_filename, request, 'tresults')
+        fname = request.node.function.__code__.co_filename
+        module = path.splitext(path.basename(fname))[0]
+        return relfile_test(fname, request, path.join('tresults', module))
     raise RuntimeError("TPath currently only works for functions")
 
 

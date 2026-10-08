@@ -128,7 +128,9 @@ def referred_psd(T, row, signal, states=None, lambda_m=1064e-9):
     """
     budget = noise_budget(T, row, states, lambda_m)
     G2 = np.abs(response(T, row, signal))**2
-    budget = {k: v / G2 for k, v in budget.items()}
+    # A frequency-independent path (a plain loss port, say) comes back from
+    # the solver without a frequency axis; give it one so the sum lines up.
+    budget = {k: np.broadcast_to(v, G2.shape) / G2 for k, v in budget.items()}
     return np.sum(list(budget.values()), axis=0), budget
 
 

@@ -503,7 +503,8 @@ def collect_figures(module_path, test_name):
     key. Without this every figure from a parametrized example is silently
     dropped from the docs.
     """
-    troot = module_path.parent / "tresults"
+    # Must match tpath_raw_make in conftest.py.
+    troot = module_path.parent / "tresults" / module_path.stem
     if not troot.is_dir():
         return {}
 
