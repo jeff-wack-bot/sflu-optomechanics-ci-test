@@ -61,11 +61,18 @@ TRUST = {
 # dependency panel and, more importantly, as the machine-readable statement of
 # the layering the refactor is meant to make obvious.
 LAYERS = {
-    "sflu_components.lib": "lib",
-    "sflu_components.edges": "lib",
-    "sflu_components.elements": "lib",
-    "sflu_components.simlib": "lib (simulation harness)",
-    "tf_lib": "lib (plotting)",
+    "sflu.lib": "lib",
+    "sflu.edges": "lib",
+    "sflu.elements": "lib",
+    "sflu.solve": "lib",
+    "sflu.quantum_lib": "lib (plane-wave reference)",
+    "sflu.simlib": "lib (simulation harness)",
+    "sflu.plotting": "lib (plotting)",
+    "sflu_components.lib": "lib (alias of sflu.lib)",
+    "sflu_components.edges": "lib (alias of sflu.edges)",
+    "sflu_components.elements": "lib (alias of sflu.elements)",
+    "sflu_components.simlib": "lib (alias of sflu.simlib)",
+    "tf_lib": "lib (alias of sflu.plotting)",
     "models.matlib": "lib (models-local copy)",
     "models.components": "lib (models-local copy)",
     "models.components2": "lib (models-local copy)",
@@ -183,9 +190,6 @@ EXCLUDED = {
         "test_sflu_simple_mirror currently fails; document once it passes",
     "fromgwinc/intsqz/test_FP.py":
         "smoke test for the parameter loader, no model and no figures",
-    "fromgwinc/test_strain_single_arm.py":
-        "single-arm strain example, deleted in the working tree but not yet "
-        "committed; drop this entry along with the file",
 }
 
 # Examples needing Optickle/MATLAB or Finesse, which are optional dependencies.

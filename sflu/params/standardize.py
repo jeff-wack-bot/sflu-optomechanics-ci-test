@@ -10,7 +10,7 @@ import numpy as np
 from sflu._vendor.gwinc import Struct
 from sflu._vendor.gwinc.noises import ifo_power
 
-from sflu_components.lib import MatrixLib, matrix_stack
+from sflu.lib import MatrixLib, matrix_stack
 
 
 def arm_gouyRT(ROCi_m, L_m, ROCe_m):

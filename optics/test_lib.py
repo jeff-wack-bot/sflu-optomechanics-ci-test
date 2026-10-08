@@ -1,5 +1,5 @@
 import numpy as np
-import sflu_components.lib as lib
+import sflu.lib as lib
 import pytest
 
 

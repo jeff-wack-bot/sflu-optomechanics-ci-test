@@ -12,7 +12,7 @@ from sflu._vendor.gwinc import const
 from sflu._vendor.gwinc import Struct
 from wield.control.SFLU import SFLU
 
-from sflu_components import edges
+from sflu import edges
 
 
 def sflu_FilterCavity():

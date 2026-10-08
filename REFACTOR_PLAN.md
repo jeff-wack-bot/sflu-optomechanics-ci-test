@@ -574,6 +574,34 @@ class of defect as Finding 1.
 Sequence it **after Stage 3**: vendoring along the lib/params/model seam once
 that seam exists is a far smaller diff than vendoring across today's tangle.
 
+## Stage 7 — one package (done)
+
+The lib layer moved into `sflu`, so lib, params and models are one importable
+package and a reader no longer has to learn that `sflu_components` and `sflu`
+are two halves of the same thing:
+
+```
+sflu_components/lib.py          -> sflu/lib.py
+sflu_components/edges.py        -> sflu/edges.py
+sflu_components/elements.py     -> sflu/elements.py
+sflu_components/quantum_lib.py  -> sflu/quantum_lib.py
+sflu_components/simlib.py       -> sflu/simlib.py
+tf_lib.py                       -> sflu/plotting.py
+```
+
+All `git mv`, so `git log --follow` still works. Live code imports the new
+names. The old names remain as **aliases, not copies**: each
+`sflu_components/<mod>.py` (and `tf_lib.py`) replaces itself in `sys.modules`
+with the real module, so `sflu_components.lib.MatrixLib is sflu.lib.MatrixLib`.
+They are kept for `models/`, which holds uncommitted work and was not touched.
+
+`fromgwinc/test_strain_single_arm.py` went to `attic/`. It could not be
+imported (it used the `fromgwinc.intsqz.optics` shim Stage 3 removed), and it
+had already been deleted in Jeff's working tree.
+
+**Verification.** Guard exact against the local baseline; `make survey`
+0 of 49; identity of every alias checked.
+
 ## What is deliberately *not* in this plan
 
 * **No physics changes.** Not the hash-seed determinism fix, not the SEC/INTSQZ

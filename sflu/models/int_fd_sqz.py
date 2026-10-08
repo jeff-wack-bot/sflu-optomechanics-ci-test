@@ -15,7 +15,7 @@ from wield.bunch import Bunch
 from wield.control import SISO
 from wield.control.SFLU import SFLU
 
-from sflu_components import edges, elements
+from sflu import edges, elements
 from sflu.models.budget import accumulate, quantum_budget
 from sflu.params import arm_gouyRT, standardize_params
 

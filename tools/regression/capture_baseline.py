@@ -179,7 +179,7 @@ def capture_matrixlib():
     There used to be two copies of this library; Stage 2 collapsed them and
     Stage 3 deleted the compatibility shim, so there is one import path left.
     """
-    from sflu_components import lib as sc_lib
+    from sflu import lib as sc_lib
 
     arrays = {}
     for tag, mod in (("mlib/sflu_components", sc_lib),):
@@ -263,8 +263,8 @@ def _edge_probe(mod, tag, arrays, mlib):
 
 def capture_edges():
     """Edge maps from the edge library."""
-    from sflu_components import edges as sc_edges
-    from sflu_components.lib import MatrixLib
+    from sflu import edges as sc_edges
+    from sflu.lib import MatrixLib
 
     arrays = {}
     for tag, mod in (("edges/sflu_components", sc_edges),):

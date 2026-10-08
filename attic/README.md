@@ -101,3 +101,11 @@ needs one optional upstream module (`gwinc.plant` on the superQK fork, or
 long, so instead of exiling it, it now skips at module level with a message
 naming what is missing. Install a pygwinc that provides either module and it
 comes back.
+
+## `test_strain_single_arm.py` (Stage 7)
+
+From `fromgwinc/`. Imported `fromgwinc.intsqz.optics` and `fromgwinc.intsqz.lib`,
+the re-export shims that Stage 3 deleted once nothing else used them, so it
+raised on import. It had also already been deleted in the author's working
+tree, uncommitted. The single-arm strain response it computed is now covered
+by `sflu.papers` (KLMTV conventional interferometer).

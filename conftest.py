@@ -319,22 +319,22 @@ def makegrid():
 
 @pytest.fixture
 def plotTF():
-    from tf_lib import plotTF
+    from sflu.plotting import plotTF
     return plotTF
 
 
 @pytest.fixture
 def plot_tf():
-    from tf_lib import plot_tf
+    from sflu.plotting import plot_tf
     return plot_tf
 
 @pytest.fixture
 def plot_tf_homs():
-    from tf_lib import plot_tf_homs
+    from sflu.plotting import plot_tf_homs
     return plot_tf_homs
 
 
 @pytest.fixture
 def plot_tf_error():
-    from tf_lib import plot_tf_error
+    from sflu.plotting import plot_tf_error
     return plot_tf_error

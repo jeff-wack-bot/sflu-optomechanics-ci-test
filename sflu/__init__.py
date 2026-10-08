@@ -1,20 +1,32 @@
 """
-SFLU optomechanics: importable models.
+SFLU optomechanics: one package, in layers.
 
-Everything here can be imported without pytest. That is the point of the
-package: before Stage 3 of ``REFACTOR_PLAN.md`` the models lived inside
-``test_*.py`` files, so the only way to reuse one was to import a test module
-from another test module.
+Dependencies run strictly downward in this list; nothing imports from a layer
+below it, and nothing in the package imports the example suite.
 
-Layers, and the direction dependencies run:
+``sflu.lib``, ``sflu.edges``, ``sflu.elements``      -- lib
+    Quadrature matrix algebra (``MatrixLib``), the edge objects that turn
+    physical parameters into SFLU edge weights, and the graph elements
+    (mirrors, beamsplitters) that say how ports connect.
+``sflu.solve``                                       -- lib
+    The DC/AC solve every model performs: collect edge maps, invert the
+    graph, scale the DC fields to a target power.
+``sflu.params``                                      -- params
+    IFO parameter sets by name, and derived quantities (``standardize_params``).
+``sflu.models``                                      -- model
+    Topology (SFLU graph) -> plant (edges -> transfer functions) -> budget
+    (transfer functions -> noise PSD).
+``sflu.papers``                                      -- model
+    Interferometers from the literature, each with the paper's closed-form
+    result alongside to check the graph against.
 
-    sflu.params      ifo Struct -> derived parameters (standardize_params)
-        ^
-    sflu.models      topology (SFLU graph) -> plant (edges -> transfer
-                     functions) -> budget (transfer functions -> PSD)
-        ^
-    examples         test_*.py: load params, call a model, plot, assert
+Supporting modules: ``sflu.plotting`` (transfer-function plots, used by the
+example fixtures), ``sflu.quantum_lib`` (the older plane-wave matrix library,
+kept for the examples that cross-check against it), ``sflu.simlib``
+(Optickle/Finesse comparison harness), and ``sflu._vendor.gwinc`` (the small
+part of pygwinc the models need; see ``docs/GWINC_DEPENDENCY.md``).
 
-Models depend on ``sflu_components`` for the matrix and edge libraries, and on
-nothing in the example suite.
+Before Stage 3 of ``REFACTOR_PLAN.md`` the models lived inside ``test_*.py``
+files; before Stage 7 the library lived in a separate ``sflu_components``
+package, which survives only as import aliases.
 """

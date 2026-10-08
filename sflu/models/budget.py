@@ -24,7 +24,7 @@ from sflu._vendor.gwinc import const
 from sflu._vendor.gwinc.noises import dhdl
 from wield.bunch import Bunch
 
-from sflu_components.lib import MatsHelper, Vnorm_sq, Vnorm_sqA, adjoint
+from sflu.lib import MatsHelper, Vnorm_sq, Vnorm_sqA, adjoint
 
 
 def accumulate(sfluB, plant, ifo, params, F_Hz, use_SS=True,
