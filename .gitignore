@@ -145,3 +145,9 @@ notes/*.pdf
 docs/_site/
 docs/docs/
 docs/mkdocs.yml
+
+# machine-local regression reference (make baseline-local)
+tools/regression/baselines-local/
+
+# cloned dev dependencies (setup.sh)
+deps/

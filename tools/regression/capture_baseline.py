@@ -323,9 +323,9 @@ def collect():
     return arrays
 
 
-def write(arrays):
-    BASELINE_DIR.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(NPZ_PATH, **arrays)
+def write(arrays, npz_path=NPZ_PATH, manifest_path=MANIFEST_PATH):
+    npz_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(npz_path, **arrays)
     manifest = {
         "F_budget": {
             "start": float(F_BUDGET[0]),
@@ -337,12 +337,12 @@ def write(arrays):
         "PYTHONHASHSEED": HASH_SEED,
         "keys": sorted(arrays),
     }
-    MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n")
-    print(f"\nWrote {NPZ_PATH.relative_to(ROOT)} ({len(arrays)} arrays)")
-    print(f"Wrote {MANIFEST_PATH.relative_to(ROOT)}")
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    print(f"\nWrote {npz_path} ({len(arrays)} arrays)")
+    print(f"Wrote {manifest_path}")
 
 
-def check(arrays, rtol=1e-12, scale_atol=0.0):
+def check(arrays, rtol=1e-12, scale_atol=0.0, npz_path=NPZ_PATH):
     """Compare against the stored baseline.
 
     ``rtol`` on its own is the right check on the machine that recorded the
@@ -361,10 +361,10 @@ def check(arrays, rtol=1e-12, scale_atol=0.0):
     Topology entries are strings and are always compared exactly, on every
     machine. A structural mistake shows up there regardless of tolerance.
     """
-    if not NPZ_PATH.exists():
-        print(f"No baseline at {NPZ_PATH}; run without --check first.")
+    if not npz_path.exists():
+        print(f"No baseline at {npz_path}; run without --check first.")
         return 1
-    ref = np.load(NPZ_PATH, allow_pickle=True)
+    ref = np.load(npz_path, allow_pickle=True)
     missing = sorted(set(ref.files) - set(arrays))
     added = sorted(set(arrays) - set(ref.files))
     bad = []
@@ -418,15 +418,24 @@ def main():
         help="absolute tolerance for --check, as a fraction of each array's "
              "own magnitude; needed off-machine for numerically-zero elements",
     )
+    ap.add_argument(
+        "--dir", type=Path, default=BASELINE_DIR,
+        help="baseline directory (default: the committed one). Point this at "
+             "an untracked directory to record a machine-local reference, "
+             "which can then be checked exactly on that machine",
+    )
     args = ap.parse_args()
+    npz_path = args.dir / NPZ_PATH.name
+    manifest_path = args.dir / MANIFEST_PATH.name
 
     arrays = collect()
     if not arrays:
         print("Captured nothing -- is the environment set up?")
         return 1
     if args.check:
-        return check(arrays, rtol=args.rtol, scale_atol=args.scale_atol)
-    write(arrays)
+        return check(arrays, rtol=args.rtol, scale_atol=args.scale_atol,
+                     npz_path=npz_path)
+    write(arrays, npz_path=npz_path, manifest_path=manifest_path)
     return 0
 
 

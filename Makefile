@@ -7,14 +7,16 @@ export PYTHONHASHSEED := 0
 
 PYTHON ?= python
 
-.PHONY: help test guard guard-ci baseline survey docs docs-quick docs-strict \
+.PHONY: help test guard guard-ci guard-local baseline baseline-local survey docs docs-quick docs-strict \
         docs-site serve clean-docs
 
 help:
 	@echo "test        run the test suite (reproducible)"
 	@echo "guard       check model outputs against the stored baselines (exact)"
 	@echo "guard-ci    same, with cross-machine tolerances (what CI runs)"
+	@echo "guard-local exact check against a baseline recorded on this machine"
 	@echo "baseline    re-record the baselines (deliberate; changes numbers)"
+	@echo "baseline-local  record this machine's reference for guard-local"
 	@echo "survey      list modules that cannot be imported"
 	@echo "docs        run the examples and rebuild the documentation"
 	@echo "docs-quick  rebuild documentation from existing tresults/ output"
@@ -43,6 +45,17 @@ guard-ci:
 
 baseline:
 	$(PYTHON) -m tools.regression.capture_baseline
+
+# Off the recording machine the exact guard cannot pass, and guard-ci is too
+# loose to prove a pure move is bit-identical. So: record a reference here, on
+# a commit you trust, then check every structural step against it exactly.
+LOCAL_BASELINE ?= tools/regression/baselines-local
+
+baseline-local:
+	$(PYTHON) -m tools.regression.capture_baseline --dir $(LOCAL_BASELINE)
+
+guard-local:
+	$(PYTHON) -m tools.regression.capture_baseline --check --dir $(LOCAL_BASELINE)
 
 survey:
 	$(PYTHON) tools/regression/import_survey.py --quiet
